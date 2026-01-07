@@ -160,6 +160,7 @@ with st.sidebar:
     
     # 국가 선택 옵션
     country_options = {
+        'ALL': {'code': 'all', 'name': '🌍 전체 국가', 'emoji': '🌍'},
         'US': {'code': 'us', 'name': '🇺🇸 미국', 'emoji': '🇺🇸'},
         'KR': {'code': 'kr', 'name': '🇰🇷 한국', 'emoji': '🇰🇷'},
         'JP': {'code': 'jp', 'name': '🇯🇵 일본', 'emoji': '🇯🇵'},
@@ -193,12 +194,12 @@ with st.sidebar:
     }
     
     selected_countries = st.multiselect(
-        "분석할 국가 선택 (최대 2개)",
+        "분석할 국가 선택 (최대 2개 또는 전체 국가)",
         options=list(country_options.keys()),
         default=['US', 'KR'],
         format_func=lambda x: country_options[x]['name'],
         max_selections=2,
-        help="분석할 국가를 선택하세요 (최대 2개)"
+        help="분석할 국가를 선택하세요. '전체 국가'를 선택하면 모든 국가의 리뷰를 수집합니다."
     )
     
     max_pages = st.slider("최대 페이지 수", min_value=1, max_value=20, value=10, 
@@ -252,11 +253,18 @@ if analyze_button:
             all_reviews = []
             country_dataframes = {}  # 국가별 DataFrame 저장
             
+            # '전체 국가'가 선택되었는지 확인
+            if 'ALL' in selected_countries:
+                # 전체 국가 선택 시 모든 국가 수집 (ALL 제외)
+                countries_to_fetch = [key for key in country_options.keys() if key != 'ALL']
+            else:
+                countries_to_fetch = selected_countries
+            
             progress_bar = st.progress(0)
             status_text = st.empty()
             
-            total_countries = len(selected_countries)
-            for idx, country_key in enumerate(selected_countries):
+            total_countries = len(countries_to_fetch)
+            for idx, country_key in enumerate(countries_to_fetch):
                 country_info = country_options[country_key]
                 country_code = country_info['code']
                 country_name = country_info['name']
@@ -279,6 +287,10 @@ if analyze_button:
             
             status_text.empty()
             progress_bar.empty()
+            
+            # '전체 국가'가 선택된 경우 selected_countries를 실제 수집한 국가들로 업데이트
+            if 'ALL' in selected_countries:
+                selected_countries = countries_to_fetch
             
             # 세션 상태에 저장
             if all_reviews:
