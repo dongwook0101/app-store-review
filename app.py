@@ -721,24 +721,46 @@ elif st.session_state.reviews_data is None:
 # 약관 및 개인정보처리방침 링크
 st.markdown("---")
 st.markdown("---")
-col1, col2, col3 = st.columns([2, 1, 1])
-with col1:
+
+# 하단 푸터 영역
+footer_col1, footer_col2, footer_col3 = st.columns([2, 1, 1])
+
+with footer_col1:
+    # 개인정보처리방침 버튼 (작은 크기)
     st.markdown(
         """
-        <div style='text-align: left; color: #666; padding: 10px 0;'>
-            <a href='?page=개인정보처리방침' style='color: #666; text-decoration: none; margin-right: 20px;'>🔒 개인정보처리방침</a>
-            <a href='?page=서비스_이용약관' style='color: #666; text-decoration: none;'>📋 서비스 이용약관</a>
+        <style>
+        .privacy-button {
+            display: inline-block;
+            padding: 4px 12px;
+            background-color: #f0f0f0;
+            color: #666;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 0.8em;
+            border: 1px solid #ddd;
+            transition: background-color 0.3s;
+        }
+        .privacy-button:hover {
+            background-color: #e0e0e0;
+            color: #333;
+        }
+        </style>
+        <div style='text-align: left; padding: 5px 0;'>
+            <a href='/개인정보처리방침' class='privacy-button'>🔒 개인정보처리방침</a>
         </div>
         """,
         unsafe_allow_html=True
     )
-with col2:
+
+with footer_col2:
     pass
-with col3:
+
+with footer_col3:
     st.markdown(
         """
-        <div style='text-align: right; color: #666; padding: 10px 0;'>
-            <p style='margin-bottom: 0.5em;'><strong>Developer:</strong> Chang Dong Wook</p>
+        <div style='text-align: right; color: #666; padding: 5px 0; font-size: 0.85em;'>
+            <p style='margin-bottom: 0.3em;'><strong>Developer:</strong> Chang Dong Wook</p>
             <p><strong>Email:</strong> <a href='mailto:okdongzang@gmail.com' style='color: #666;'>okdongzang@gmail.com</a></p>
         </div>
         """,
