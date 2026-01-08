@@ -225,6 +225,14 @@ with st.sidebar:
     
     st.header("⚙️ 설정")
     
+    # 약관 및 개인정보처리방침 링크 (사이드바 하단)
+    st.markdown("---")
+    st.markdown("### 📄 약관 및 정책")
+    st.markdown("""
+    - [🔒 개인정보처리방침](/개인정보처리방침)
+    - [📋 서비스 이용약관](/서비스_이용약관)
+    """)
+    
     app_id_input = st.text_input(
         "앱 ID",
         value="1510564828",
@@ -710,16 +718,30 @@ elif st.session_state.reviews_data is None:
     st.subheader("💡 예시")
     st.code("앱 ID: 1510564828 (Murmur - Voice Diary)", language="text")
 
-# 개발자 정보 (맨 아래 오른쪽)
+# 약관 및 개인정보처리방침 링크
 st.markdown("---")
 st.markdown("---")
-st.markdown(
-    """
-    <div style='text-align: right; color: #666; padding: 20px;'>
-        <p style='margin-bottom: 0.5em;'><strong>Developer:</strong> Chang Dong Wook</p>
-        <p><strong>Email:</strong> <a href='mailto:okdongzang@gmail.com'>okdongzang@gmail.com</a></p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+col1, col2, col3 = st.columns([2, 1, 1])
+with col1:
+    st.markdown(
+        """
+        <div style='text-align: left; color: #666; padding: 10px 0;'>
+            <a href='?page=개인정보처리방침' style='color: #666; text-decoration: none; margin-right: 20px;'>🔒 개인정보처리방침</a>
+            <a href='?page=서비스_이용약관' style='color: #666; text-decoration: none;'>📋 서비스 이용약관</a>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+with col2:
+    pass
+with col3:
+    st.markdown(
+        """
+        <div style='text-align: right; color: #666; padding: 10px 0;'>
+            <p style='margin-bottom: 0.5em;'><strong>Developer:</strong> Chang Dong Wook</p>
+            <p><strong>Email:</strong> <a href='mailto:okdongzang@gmail.com' style='color: #666;'>okdongzang@gmail.com</a></p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
