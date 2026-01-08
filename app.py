@@ -22,14 +22,32 @@ st.set_page_config(
 )
 
 # 인증 체크 및 OAuth 콜백 처리
+# 먼저 인증 상태 확인 (콜백 처리 전)
+is_authenticated_before = check_authentication()
+
+# OAuth 성공 플래그가 있으면 query params 정리만 수행
+if st.session_state.get('oauth_success', False):
+    if 'code' in st.query_params or 'state' in st.query_params:
+        try:
+            new_params = {}
+            for key, value in st.query_params.items():
+                if key not in ['code', 'state']:
+                    new_params[key] = value
+            st.query_params = new_params
+        except:
+            pass
+    st.session_state.oauth_success = False
+
 # OAuth 콜백 처리 (세션 상태 업데이트)
-handle_oauth_callback()
+# 이미 인증되어 있으면 콜백 처리 건너뛰기
+if not is_authenticated_before:
+    handle_oauth_callback()
 
 # 인증 상태 확인 (콜백 처리 후)
 is_authenticated = check_authentication()
 
-# 디버깅: query params에 code가 남아있고 이미 인증된 경우 제거
-if is_authenticated and ('code' in st.query_params or 'state' in st.query_params):
+# query params 정리: code나 state가 있으면 제거
+if ('code' in st.query_params or 'state' in st.query_params) and is_authenticated:
     try:
         new_params = {}
         for key, value in st.query_params.items():

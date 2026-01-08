@@ -102,7 +102,12 @@ def check_authentication():
         st.session_state.credentials = None
     
     # 인증 상태와 사용자 정보가 모두 있어야 인증된 것으로 간주
-    is_authenticated = st.session_state.authenticated and st.session_state.user_info is not None
+    is_authenticated = (
+        st.session_state.get('authenticated', False) and 
+        st.session_state.get('user_info') is not None and
+        isinstance(st.session_state.get('user_info'), dict) and
+        len(st.session_state.get('user_info', {})) > 0
+    )
     
     return is_authenticated
 
@@ -189,6 +194,13 @@ def handle_oauth_callback():
             
             # 콜백 처리 완료 플래그 해제
             st.session_state.oauth_processing = False
+            
+            # 세션 상태 저장 확인 (중요: rerun 전에 확실히 저장)
+            # 처리된 코드로 표시
+            st.session_state.processed_oauth_codes.add(code)
+            
+            # 인증 완료 플래그 설정 (app.py에서 확인용)
+            st.session_state.oauth_success = True
             
             # URL에서 code와 state 제거 (rerun 전에)
             try:
