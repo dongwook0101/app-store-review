@@ -112,25 +112,19 @@ def handle_oauth_callback():
     
     # 이미 인증되어 있고 사용자 정보가 있으면 처리하지 않음
     if (st.session_state.get('authenticated', False) and 
-        st.session_state.get('user_info') is not None and 
-        'code' not in query_params):
-        return
-    
-    # OAuth 완료 플래그가 있고, 같은 코드가 아니면 query params만 제거
-    if st.session_state.get('oauth_completed', False):
-        completed_code = st.session_state.get('oauth_completed_code', '')
-        current_code = query_params.get('code', '')
-        if completed_code == current_code and current_code:
-            # 이미 처리된 코드이므로 query params만 제거
+        st.session_state.get('user_info') is not None):
+        # query params에 code가 있으면 제거만 시도
+        if 'code' in query_params:
             try:
                 new_params = {}
                 for key, value in query_params.items():
                     if key not in ['code', 'state']:
                         new_params[key] = value
                 st.query_params = new_params
+                st.rerun()
             except:
                 pass
-            return
+        return
     
     # 처리된 코드 추적 (중복 처리 방지)
     if 'processed_oauth_codes' not in st.session_state:
@@ -139,16 +133,15 @@ def handle_oauth_callback():
     if 'code' in query_params:
         code = query_params.get('code', '')
         
-        # 이미 처리된 코드면 무시
+        # 이미 처리된 코드면 무시하고 query params만 제거
         if code in st.session_state.processed_oauth_codes:
-            # query_params에서 code 제거 시도
             try:
-                new_params = dict(st.query_params)
-                if 'code' in new_params:
-                    del new_params['code']
-                if 'state' in new_params:
-                    del new_params['state']
+                new_params = {}
+                for key, value in query_params.items():
+                    if key not in ['code', 'state']:
+                        new_params[key] = value
                 st.query_params = new_params
+                st.rerun()
             except:
                 pass
             return
@@ -179,7 +172,7 @@ def handle_oauth_callback():
             # 사용자 정보 가져오기
             user_info = get_user_info(credentials)
             
-            # 세션 상태에 저장
+            # 세션 상태에 저장 (중요: 먼저 저장)
             st.session_state.authenticated = True
             st.session_state.user_info = user_info
             st.session_state.credentials = {
@@ -197,35 +190,17 @@ def handle_oauth_callback():
             # 콜백 처리 완료 플래그 해제
             st.session_state.oauth_processing = False
             
-            # 인증 완료 플래그 설정 (query params 제거를 위해)
-            st.session_state.oauth_completed = True
-            st.session_state.oauth_completed_code = code  # 처리된 코드 저장
-            
-            # URL에서 code와 state 제거
+            # URL에서 code와 state 제거 (rerun 전에)
             try:
                 new_params = {}
-                for key, value in st.query_params.items():
+                for key, value in query_params.items():
                     if key not in ['code', 'state']:
                         new_params[key] = value
-                if new_params != st.query_params:
-                    st.query_params = new_params
-            except Exception as e:
-                # query_params 수정이 실패해도 계속 진행
+                st.query_params = new_params
+            except:
                 pass
             
-            # 페이지 새로고침 (중요: 세션 상태가 유지되도록)
-            # JavaScript로 URL에서 query params 제거 시도
-            st.markdown("""
-            <script>
-            if (window.location.search.includes('code=') || window.location.search.includes('state=')) {
-                const url = new URL(window.location);
-                url.searchParams.delete('code');
-                url.searchParams.delete('state');
-                window.history.replaceState({}, '', url);
-            }
-            </script>
-            """, unsafe_allow_html=True)
-            
+            # 페이지 새로고침 (세션 상태가 유지되도록)
             st.rerun()
             
         except Exception as e:

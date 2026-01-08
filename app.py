@@ -28,6 +28,18 @@ handle_oauth_callback()
 # 인증 상태 확인 (콜백 처리 후)
 is_authenticated = check_authentication()
 
+# 디버깅: query params에 code가 남아있고 이미 인증된 경우 제거
+if is_authenticated and ('code' in st.query_params or 'state' in st.query_params):
+    try:
+        new_params = {}
+        for key, value in st.query_params.items():
+            if key not in ['code', 'state']:
+                new_params[key] = value
+        st.query_params = new_params
+        st.rerun()
+    except:
+        pass
+
 # 인증되지 않은 경우 로그인 페이지 표시
 if not is_authenticated:
     show_login_page()
