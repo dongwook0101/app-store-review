@@ -155,6 +155,30 @@ st.markdown("---")
 
 # 사이드바에 입력 폼
 with st.sidebar:
+    # 사이드바 공백 조정 CSS
+    st.markdown("""
+    <style>
+    /* 사이드바 전체 공백 조정 */
+    section[data-testid="stSidebar"] > div {
+        padding-top: 0.5rem !important;
+    }
+    /* 로그인 섹션과 설정 섹션 사이 공백 줄이기 */
+    section[data-testid="stSidebar"] .element-container {
+        margin-bottom: 0.3rem !important;
+    }
+    /* 설정 헤더 위 공백 줄이기 */
+    section[data-testid="stSidebar"] h2 {
+        margin-top: 0.3rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    /* 구분선 위 공백 줄이기 */
+    section[data-testid="stSidebar"] hr {
+        margin-top: 0.3rem !important;
+        margin-bottom: 0.3rem !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     # 사용자 정보 표시 (사이드바 상단)
     if st.session_state.user_info:
         st.markdown(f"**👤 로그인:** {st.session_state.user_info.get('email', 'Unknown')}")
