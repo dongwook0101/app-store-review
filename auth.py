@@ -27,18 +27,48 @@ CLIENT_CONFIG = {
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
         "token_uri": "https://oauth2.googleapis.com/token",
         "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-        "redirect_uris": ["http://localhost:8501"]
+        "redirect_uris": [
+            "http://localhost:8501",
+            "https://appstore-review-analyzer.streamlit.app/"
+        ]
     }
 }
+
+def get_redirect_uri():
+    """현재 환경에 맞는 리디렉션 URI 반환"""
+    try:
+        # Streamlit Cloud 환경 확인
+        # Streamlit Cloud에서는 여러 환경 변수가 설정됨
+        is_streamlit_cloud = (
+            os.getenv("STREAMLIT_SERVER_BASE_URL") or
+            os.getenv("STREAMLIT_BASE_URL_PATH") or
+            os.getenv("STREAMLIT_SERVER_PORT") == "8501" or
+            st.get_option("server.headless")  # Streamlit Cloud는 headless 모드
+        )
+        
+        if is_streamlit_cloud:
+            # Streamlit Cloud 환경
+            base_url = os.getenv("STREAMLIT_SERVER_BASE_URL", "https://appstore-review-analyzer.streamlit.app")
+            base_url = base_url.rstrip('/')
+            return f"{base_url}/"
+        else:
+            # 로컬 환경
+            # 로컬 개발 환경에서 HTTP 허용
+            os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+            return "http://localhost:8501"
+    except:
+        # 오류 발생 시 기본값 사용 (배포 환경으로 가정)
+        return "https://appstore-review-analyzer.streamlit.app/"
 
 SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
 
 def get_flow():
     """OAuth Flow 객체 생성"""
+    redirect_uri = get_redirect_uri()
     flow = Flow.from_client_config(
         CLIENT_CONFIG,
         scopes=SCOPES,
-        redirect_uri="http://localhost:8501"
+        redirect_uri=redirect_uri
     )
     return flow
 
@@ -83,8 +113,8 @@ def handle_oauth_callback():
             code = query_params.get('code', '')
             state = query_params.get('state', '')
             
-            # Streamlit의 기본 URL 사용
-            redirect_uri = "http://localhost:8501"
+            # 현재 환경에 맞는 리디렉션 URI 가져오기
+            redirect_uri = get_redirect_uri()
             
             # authorization_response URL 구성
             authorization_response = f"{redirect_uri}?code={code}"
