@@ -110,9 +110,27 @@ def handle_oauth_callback():
     """OAuth 콜백 처리"""
     query_params = st.query_params
     
-    # 이미 인증되어 있고 콜백 코드가 없으면 처리하지 않음
-    if st.session_state.get('authenticated', False) and 'code' not in query_params:
+    # 이미 인증되어 있고 사용자 정보가 있으면 처리하지 않음
+    if (st.session_state.get('authenticated', False) and 
+        st.session_state.get('user_info') is not None and 
+        'code' not in query_params):
         return
+    
+    # OAuth 완료 플래그가 있고, 같은 코드가 아니면 query params만 제거
+    if st.session_state.get('oauth_completed', False):
+        completed_code = st.session_state.get('oauth_completed_code', '')
+        current_code = query_params.get('code', '')
+        if completed_code == current_code and current_code:
+            # 이미 처리된 코드이므로 query params만 제거
+            try:
+                new_params = {}
+                for key, value in query_params.items():
+                    if key not in ['code', 'state']:
+                        new_params[key] = value
+                st.query_params = new_params
+            except:
+                pass
+            return
     
     # 처리된 코드 추적 (중복 처리 방지)
     if 'processed_oauth_codes' not in st.session_state:
@@ -179,19 +197,35 @@ def handle_oauth_callback():
             # 콜백 처리 완료 플래그 해제
             st.session_state.oauth_processing = False
             
+            # 인증 완료 플래그 설정 (query params 제거를 위해)
+            st.session_state.oauth_completed = True
+            st.session_state.oauth_completed_code = code  # 처리된 코드 저장
+            
             # URL에서 code와 state 제거
             try:
-                new_params = dict(st.query_params)
-                if 'code' in new_params:
-                    del new_params['code']
-                if 'state' in new_params:
-                    del new_params['state']
-                st.query_params = new_params
-            except:
+                new_params = {}
+                for key, value in st.query_params.items():
+                    if key not in ['code', 'state']:
+                        new_params[key] = value
+                if new_params != st.query_params:
+                    st.query_params = new_params
+            except Exception as e:
                 # query_params 수정이 실패해도 계속 진행
                 pass
             
-            # 페이지 새로고침
+            # 페이지 새로고침 (중요: 세션 상태가 유지되도록)
+            # JavaScript로 URL에서 query params 제거 시도
+            st.markdown("""
+            <script>
+            if (window.location.search.includes('code=') || window.location.search.includes('state=')) {
+                const url = new URL(window.location);
+                url.searchParams.delete('code');
+                url.searchParams.delete('state');
+                window.history.replaceState({}, '', url);
+            }
+            </script>
+            """, unsafe_allow_html=True)
+            
             st.rerun()
             
         except Exception as e:
