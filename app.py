@@ -22,10 +22,14 @@ st.set_page_config(
 )
 
 # 인증 체크 및 OAuth 콜백 처리
+# OAuth 콜백 처리 (세션 상태 업데이트)
 handle_oauth_callback()
 
+# 인증 상태 확인 (콜백 처리 후)
+is_authenticated = check_authentication()
+
 # 인증되지 않은 경우 로그인 페이지 표시
-if not check_authentication():
+if not is_authenticated:
     show_login_page()
     st.stop()
 

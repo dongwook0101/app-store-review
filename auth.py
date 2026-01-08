@@ -101,16 +101,48 @@ def check_authentication():
     if 'credentials' not in st.session_state:
         st.session_state.credentials = None
     
-    return st.session_state.authenticated
+    # 인증 상태와 사용자 정보가 모두 있어야 인증된 것으로 간주
+    is_authenticated = st.session_state.authenticated and st.session_state.user_info is not None
+    
+    return is_authenticated
 
 def handle_oauth_callback():
     """OAuth 콜백 처리"""
     query_params = st.query_params
     
+    # 이미 인증되어 있고 콜백 코드가 없으면 처리하지 않음
+    if st.session_state.get('authenticated', False) and 'code' not in query_params:
+        return
+    
+    # 처리된 코드 추적 (중복 처리 방지)
+    if 'processed_oauth_codes' not in st.session_state:
+        st.session_state.processed_oauth_codes = set()
+    
     if 'code' in query_params:
+        code = query_params.get('code', '')
+        
+        # 이미 처리된 코드면 무시
+        if code in st.session_state.processed_oauth_codes:
+            # query_params에서 code 제거 시도
+            try:
+                new_params = dict(st.query_params)
+                if 'code' in new_params:
+                    del new_params['code']
+                if 'state' in new_params:
+                    del new_params['state']
+                st.query_params = new_params
+            except:
+                pass
+            return
+        
+        # 콜백 처리 중 플래그 확인 (무한 루프 방지)
+        if st.session_state.get('oauth_processing', False):
+            return
+        
+        # 콜백 처리 중 플래그 설정
+        st.session_state.oauth_processing = True
+        
         try:
-            # 현재 URL에서 authorization response 구성
-            code = query_params.get('code', '')
             state = query_params.get('state', '')
             
             # 현재 환경에 맞는 리디렉션 URI 가져오기
@@ -141,18 +173,32 @@ def handle_oauth_callback():
                 'scopes': credentials.scopes
             }
             
+            # 처리된 코드로 표시
+            st.session_state.processed_oauth_codes.add(code)
+            
+            # 콜백 처리 완료 플래그 해제
+            st.session_state.oauth_processing = False
+            
             # URL에서 code와 state 제거
-            new_params = dict(st.query_params)
-            if 'code' in new_params:
-                del new_params['code']
-            if 'state' in new_params:
-                del new_params['state']
-            st.query_params = new_params
+            try:
+                new_params = dict(st.query_params)
+                if 'code' in new_params:
+                    del new_params['code']
+                if 'state' in new_params:
+                    del new_params['state']
+                st.query_params = new_params
+            except:
+                # query_params 수정이 실패해도 계속 진행
+                pass
+            
+            # 페이지 새로고침
             st.rerun()
             
         except Exception as e:
+            # 오류 발생 시 플래그 해제
+            st.session_state.oauth_processing = False
             st.error(f"인증 오류: {str(e)}")
-            st.session_state.authenticated = False
+            # 기존 인증 상태는 유지 (로그아웃하지 않음)
 
 def show_login_page():
     """로그인 페이지 표시"""
