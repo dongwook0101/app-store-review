@@ -19,10 +19,11 @@ except ImportError:
 
 # OAuth 2.0 클라이언트 설정
 # Google Cloud Console에서 발급받은 클라이언트 ID와 시크릿을 사용
+# 환경 변수에서 가져오거나, 없으면 기본값 사용
 CLIENT_CONFIG = {
     "web": {
-        "client_id": os.getenv("GOOGLE_CLIENT_ID", ""),
-        "client_secret": os.getenv("GOOGLE_CLIENT_SECRET", ""),
+        "client_id": os.getenv("GOOGLE_CLIENT_ID", "403626382842-512spe9nk3dvj2omjj2iqe1880k39btu.apps.googleusercontent.com"),
+        "client_secret": os.getenv("GOOGLE_CLIENT_SECRET", "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"),
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
         "token_uri": "https://oauth2.googleapis.com/token",
         "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
