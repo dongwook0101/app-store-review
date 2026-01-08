@@ -12,6 +12,7 @@ from datetime import datetime
 import os
 import io
 import re
+from auth import check_authentication, handle_oauth_callback, show_login_page
 
 # 페이지 설정
 st.set_page_config(
@@ -19,6 +20,14 @@ st.set_page_config(
     page_icon="📱",
     layout="wide"
 )
+
+# 인증 체크 및 OAuth 콜백 처리
+handle_oauth_callback()
+
+# 인증되지 않은 경우 로그인 페이지 표시
+if not check_authentication():
+    show_login_page()
+    st.stop()
 
 def fetch_reviews_rss(app_id, country='us', max_pages=10):
     """
@@ -146,6 +155,16 @@ st.markdown("---")
 
 # 사이드바에 입력 폼
 with st.sidebar:
+    # 사용자 정보 표시 (사이드바 상단)
+    if st.session_state.user_info:
+        st.markdown(f"**👤 로그인:** {st.session_state.user_info.get('email', 'Unknown')}")
+        if st.button("🚪 로그아웃", use_container_width=True):
+            st.session_state.authenticated = False
+            st.session_state.user_info = None
+            st.session_state.credentials = None
+            st.rerun()
+        st.markdown("---")
+    
     st.header("⚙️ 설정")
     
     app_id_input = st.text_input(
