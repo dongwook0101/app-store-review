@@ -747,7 +747,7 @@ with footer_col1:
         }
         </style>
         <div style='text-align: left; padding: 5px 0;'>
-            <a href='/개인정보처리방침' class='privacy-button'>🔒 개인정보처리방침</a>
+            <a href='/개인정보처리방침' class='privacy-button' onclick='window.location.href="/개인정보처리방침"; return false;'>🔒 개인정보처리방침</a>
         </div>
         """,
         unsafe_allow_html=True

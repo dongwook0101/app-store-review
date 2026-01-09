@@ -79,3 +79,4 @@ streamlit run app.py
 - 로컬 환경에서는 HTTP를 사용하며, `OAUTHLIB_INSECURE_TRANSPORT` 환경 변수가 자동으로 설정됩니다
 - 코드 변경 후 Streamlit Cloud에 다시 배포해야 합니다
 
+

@@ -37,7 +37,12 @@ CLIENT_CONFIG = {
 def get_redirect_uri():
     """현재 환경에 맞는 리디렉션 URI 반환"""
     try:
-        # Streamlit Cloud 환경 확인
+        # 1. .env 또는 환경 변수에 직접 설정된 리디렉션 URI가 있으면 최우선 사용
+        manual_redirect_uri = os.getenv("REDIRECT_URI")
+        if manual_redirect_uri:
+            return manual_redirect_uri
+
+        # 2. Streamlit Cloud 환경 확인
         # Streamlit Cloud에서는 여러 환경 변수가 설정됨
         is_streamlit_cloud = (
             os.getenv("STREAMLIT_SERVER_BASE_URL") or
