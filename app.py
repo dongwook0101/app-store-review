@@ -12,6 +12,7 @@ from datetime import datetime
 import os
 import io
 import re
+import extra_streamlit_components as stx
 from auth import check_authentication, handle_oauth_callback, show_login_page
 
 # 페이지 설정
@@ -20,6 +21,24 @@ st.set_page_config(
     page_icon="📱",
     layout="wide"
 )
+
+# 쿠키 매니저 초기화
+@st.cache_resource(experimental_allow_widgets=True)
+def get_manager():
+    return stx.CookieManager()
+
+cookie_manager = get_manager()
+
+# 쿠키에서 인증 정보 로드
+if 'authenticated' not in st.session_state:
+    auth_cookie = cookie_manager.get(cookie="auth_token")
+    if auth_cookie:
+        # 쿠키가 있으면 인증된 것으로 처리 (간소화된 예시)
+        # 실제로는 토큰 검증 등이 필요할 수 있음
+        st.session_state.authenticated = True
+        # 사용자 정보도 쿠키나 별도 저장소에서 복원할 수 있음
+        # 여기서는 간단히 플래그만 설정
+        st.session_state.user_info = {'email': 'Restored Session'} 
 
 # 인증 체크 및 OAuth 콜백 처리
 # 먼저 인증 상태 확인 (콜백 처리 전)
@@ -37,6 +56,9 @@ if st.session_state.get('oauth_success', False):
         except:
             pass
     st.session_state.oauth_success = False
+    # 로그인 성공 시 쿠키 설정
+    cookie_manager.set("auth_token", "valid_token", expires_at=datetime.now().replace(year=datetime.now().year + 1))
+
 
 # OAuth 콜백 처리 (세션 상태 업데이트)
 # 이미 인증되어 있으면 콜백 처리 건너뛰기
@@ -220,6 +242,8 @@ with st.sidebar:
             st.session_state.authenticated = False
             st.session_state.user_info = None
             st.session_state.credentials = None
+            # 로그아웃 시 쿠키 삭제
+            cookie_manager.delete("auth_token")
             st.rerun()
         st.markdown("---")
     
