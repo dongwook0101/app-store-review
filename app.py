@@ -750,32 +750,19 @@ st.markdown("---")
 footer_col1, footer_col2, footer_col3 = st.columns([2, 1, 1])
 
 with footer_col1:
-    # 개인정보처리방침 버튼 (작은 크기)
-    st.markdown(
-        """
-        <style>
-        .privacy-button {
-            display: inline-block;
-            padding: 4px 12px;
-            background-color: #f0f0f0;
-            color: #666;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 0.8em;
-            border: 1px solid #ddd;
-            transition: background-color 0.3s;
-        }
-        .privacy-button:hover {
-            background-color: #e0e0e0;
-            color: #333;
-        }
-        </style>
-        <div style='text-align: left; padding: 5px 0;'>
-            <a href='/개인정보처리방침' class='privacy-button' onclick='window.location.href="/개인정보처리방침"; return false;'>🔒 개인정보처리방침</a>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    # 개인정보처리방침 버튼 (st.page_link 사용 - Streamlit 1.31.0+)
+    try:
+        st.page_link("pages/1_개인정보처리방침.py", label="🔒 개인정보처리방침", icon=None)
+    except:
+        # 구버전 호환성을 위한 폴백
+        st.markdown(
+            """
+            <div style='text-align: left; padding: 5px 0;'>
+                <a href='/개인정보처리방침' class='privacy-button' onclick='window.location.href="/개인정보처리방침"; return false;'>🔒 개인정보처리방침</a>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
 with footer_col2:
     pass
