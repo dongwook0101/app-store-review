@@ -1,0 +1,10 @@
+# 배포에 불필요한 파일 및 폴더 제외
+__pycache__/
+*.json
+*.xlsx
+*.png
+detailed_analysis.py
+analyze_reviews_rss.py
+실행_가이드.md
+실행방법.txt
+.devcontainer/
