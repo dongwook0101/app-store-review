@@ -23,8 +23,8 @@ except ImportError:
 # 환경 변수에서 가져오거나, 없으면 기본값 사용
 CLIENT_CONFIG = {
     "web": {
-        "client_id": os.getenv("GOOGLE_CLIENT_ID", "403626382842-512spe9nk3dvj2omjj2iqe1880k39btu.apps.googleusercontent.com"),
-        "client_secret": os.getenv("GOOGLE_CLIENT_SECRET", "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"),
+        "client_id": os.getenv("GOOGLE_CLIENT_ID") or st.secrets.get("GOOGLE_CLIENT_ID", "403626382842-512spe9nk3dvj2omjj2iqe1880k39btu.apps.googleusercontent.com"),
+        "client_secret": os.getenv("GOOGLE_CLIENT_SECRET") or st.secrets.get("GOOGLE_CLIENT_SECRET", "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"),
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
         "token_uri": "https://oauth2.googleapis.com/token",
         "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
@@ -77,7 +77,25 @@ SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://w
 def get_flow():
     """OAuth Flow 객체 생성"""
     redirect_uri = get_redirect_uri()
-    client_config = CLIENT_CONFIG['web']
+    
+    # 클라이언트 설정 (런타임에 secrets 확인)
+    client_config = {
+        "client_id": os.getenv("GOOGLE_CLIENT_ID") or st.secrets.get("GOOGLE_CLIENT_ID", "403626382842-512spe9nk3dvj2omjj2iqe1880k39btu.apps.googleusercontent.com"),
+        "client_secret": os.getenv("GOOGLE_CLIENT_SECRET") or st.secrets.get("GOOGLE_CLIENT_SECRET", "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"),
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "redirect_uris": [
+            "http://localhost:8501",
+            "http://localhost:8502",
+            "http://localhost:8503",
+            "http://127.0.0.1:8501",
+            "http://127.0.0.1:8502",
+            "http://127.0.0.1:8503",
+            "https://appstore-review-analyzer.streamlit.app/",
+            "https://appstore-review-analyzer.streamlit.app"
+        ]
+    }
     
     # OAuth2Session 생성
     oauth = OAuth2Session(
@@ -91,10 +109,13 @@ def get_flow():
         oauth.enforce_https = False
     
     # Flow 객체 생성
+    flow_config = {
+        "web": client_config
+    }
     flow = Flow(
         oauth,
         client_type='web',
-        client_config=CLIENT_CONFIG
+        client_config=flow_config
     )
     return flow
 
