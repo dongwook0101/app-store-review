@@ -12,6 +12,8 @@ from datetime import datetime
 import os
 import io
 import re
+import extra_streamlit_components as stx
+from auth import check_authentication, handle_oauth_callback, show_login_page
 
 # 페이지 설정
 st.set_page_config(
@@ -20,9 +22,91 @@ st.set_page_config(
     layout="wide"
 )
 
-def fetch_reviews_rss(app_id, country='us', max_pages=10):
+# 디버깅: Secrets 로드 확인 (개발 완료 후 제거)
+# try:
+#     st.write("Secrets Loaded:", st.secrets.get("DEV_PASSWORD"))
+# except Exception as e:
+#     st.write("Secrets Error:", e)
+
+# 쿠키 매니저 초기화
+# st.cache_resource 제거 (위젯 사용 경고 방지)
+def get_manager():
+    return stx.CookieManager()
+
+if 'cookie_manager' not in st.session_state:
+    st.session_state.cookie_manager = get_manager()
+
+cookie_manager = st.session_state.cookie_manager
+
+# 쿠키에서 인증 정보 로드
+if 'authenticated' not in st.session_state:
+    auth_cookie = cookie_manager.get(cookie="auth_token")
+    if auth_cookie:
+        # 쿠키가 있으면 인증된 것으로 처리 (간소화된 예시)
+        # 실제로는 토큰 검증 등이 필요할 수 있음
+        st.session_state.authenticated = True
+        # 사용자 정보도 쿠키나 별도 저장소에서 복원할 수 있음
+        # 여기서는 간단히 플래그만 설정
+        st.session_state.user_info = {'email': 'Restored Session'} 
+
+# 인증 체크 및 OAuth 콜백 처리
+# 먼저 인증 상태 확인 (콜백 처리 전)
+is_authenticated_before = check_authentication()
+
+# 개발자 우회 접속 등으로 인증이 방금 완료된 경우 리런
+if is_authenticated_before and 'dev' in st.query_params:
+    st.rerun()
+
+# OAuth 콜백 처리 (세션 상태 업데이트)
+# 이미 인증되어 있으면 콜백 처리 건너뛰기
+if not is_authenticated_before:
+    handle_oauth_callback()
+
+# 인증 상태 확인 (콜백 처리 후)
+is_authenticated = check_authentication()
+
+# 로그인 성공 시 쿠키 설정 및 query params 정리
+if st.session_state.get('oauth_success', False):
+    try:
+        cookie_manager.set("auth_token", "valid_token", expires_at=datetime.now().replace(year=datetime.now().year + 1))
+    except Exception as e:
+        st.warning(f"쿠키 설정 오류: {e}")
+    st.session_state.oauth_success = False
+
+# query params에 code나 state가 있으면 정리 (가능한 경우만)
+if ('code' in st.query_params or 'state' in st.query_params):
+    if is_authenticated:
+        # 로그인 완료 후 URL 정리하기 (선택사항 - 실패해도 무시)
+        try:
+            params_to_keep = {}
+            for k, v in st.query_params.items():
+                if k not in ['code', 'state']:
+                    params_to_keep[k] = v
+            
+            st.query_params.clear()
+            for key, value in params_to_keep.items():
+                st.query_params[key] = value
+        except:
+            # query params 수정 실패해도 앱 진행
+            pass
+
+# 인증되지 않은 경우 로그인 페이지 표시
+if not is_authenticated:
+    show_login_page()
+    st.stop()
+
+# 세션 상태 초기화
+if 'reviews_data' not in st.session_state:
+    st.session_state.reviews_data = None
+if 'app_id' not in st.session_state:
+    st.session_state.app_id = None
+if 'app_info' not in st.session_state:
+    st.session_state.app_info = None
+
+def fetch_reviews_rss(app_id, country='us', max_pages=10, start_year=None, end_year=None):
     """
     iTunes RSS API를 사용하여 리뷰 데이터를 수집합니다.
+    start_year와 end_year가 지정되면 해당 기간의 리뷰만 수집합니다.
     """
     all_reviews = []
     
@@ -103,6 +187,22 @@ def fetch_reviews_rss(app_id, country='us', max_pages=10):
                 
                 if 'updated' in entry:
                     review_data['date'] = entry['updated']['label']
+                    
+                    # 날짜 필터링
+                    if start_year is not None or end_year is not None:
+                        try:
+                            review_date = pd.to_datetime(review_data['date'])
+                            review_year = review_date.year
+                            
+                            if end_year and review_year > end_year:
+                                continue  # 설정한 종료 년도보다 최신 리뷰는 건너뜀
+                                
+                            if start_year and review_year < start_year:
+                                # RSS는 최신순으로 정렬되어 있으므로, 시작 년도보다 오래된 리뷰가 나오면
+                                # 더 이상 수집할 필요가 없음 (페이지 순회 중단)
+                                return all_reviews
+                        except:
+                            pass
                 
                 if 'im:version' in entry:
                     review_data['version'] = entry['im:version']['label']
@@ -146,6 +246,42 @@ st.markdown("---")
 
 # 사이드바에 입력 폼
 with st.sidebar:
+    # 사이드바 공백 조정 CSS
+    st.markdown("""
+    <style>
+    /* 사이드바 전체 공백 조정 */
+    section[data-testid="stSidebar"] > div {
+        padding-top: 0.5rem !important;
+    }
+    /* 로그인 섹션과 설정 섹션 사이 공백 줄이기 */
+    section[data-testid="stSidebar"] .element-container {
+        margin-bottom: 0.3rem !important;
+    }
+    /* 설정 헤더 위 공백 줄이기 */
+    section[data-testid="stSidebar"] h2 {
+        margin-top: 0.3rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    /* 구분선 위 공백 줄이기 */
+    section[data-testid="stSidebar"] hr {
+        margin-top: 0.3rem !important;
+        margin-bottom: 0.3rem !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # 사용자 정보 표시 (사이드바 상단)
+    if st.session_state.user_info:
+        st.markdown(f"**👤 로그인:** {st.session_state.user_info.get('email', 'Unknown')}")
+        if st.button("🚪 로그아웃", use_container_width=True):
+            st.session_state.authenticated = False
+            st.session_state.user_info = None
+            st.session_state.credentials = None
+            # 로그아웃 시 쿠키 삭제
+            cookie_manager.delete("auth_token")
+            st.rerun()
+        st.markdown("---")
+    
     st.header("⚙️ 설정")
     
     app_id_input = st.text_input(
@@ -160,6 +296,7 @@ with st.sidebar:
     
     # 국가 선택 옵션
     country_options = {
+        'ALL': {'code': 'all', 'name': '🌍 전체 국가', 'emoji': '🌍'},
         'US': {'code': 'us', 'name': '🇺🇸 미국', 'emoji': '🇺🇸'},
         'KR': {'code': 'kr', 'name': '🇰🇷 한국', 'emoji': '🇰🇷'},
         'JP': {'code': 'jp', 'name': '🇯🇵 일본', 'emoji': '🇯🇵'},
@@ -193,20 +330,49 @@ with st.sidebar:
     }
     
     selected_countries = st.multiselect(
-        "분석할 국가 선택 (최대 2개)",
+        "분석할 국가 선택 (최대 2개 또는 전체 국가)",
         options=list(country_options.keys()),
         default=['US', 'KR'],
         format_func=lambda x: country_options[x]['name'],
         max_selections=2,
-        help="분석할 국가를 선택하세요 (최대 2개)"
+        help="분석할 국가를 선택하세요. '전체 국가'를 선택하면 모든 국가의 리뷰를 수집합니다."
     )
     
     max_pages = st.slider("최대 페이지 수", min_value=1, max_value=20, value=10, 
                           help="각 페이지당 최대 50개의 리뷰를 가져옵니다")
     
+    st.markdown("### 📅 기간 설정")
+    current_year = datetime.now().year
+    
+    col_year1, col_year2 = st.columns(2)
+    with col_year1:
+        start_year = st.number_input(
+            "시작 년도", 
+            min_value=2008, 
+            max_value=current_year, 
+            value=current_year-1,
+            help="이 년도부터의 리뷰를 가져옵니다."
+        )
+    with col_year2:
+        end_year = st.number_input(
+            "종료 년도", 
+            min_value=2008, 
+            max_value=current_year, 
+            value=current_year,
+            help="이 년도까지의 리뷰를 가져옵니다."
+        )
+        
     st.markdown("---")
     
     analyze_button = st.button("🚀 분석 시작", type="primary", use_container_width=True)
+    
+    # 약관 및 개인정보처리방침 링크 (사이드바 하단)
+    st.markdown("---")
+    st.markdown("### 📄 약관 및 정책")
+    st.markdown("""
+    - [🔒 개인정보처리방침](/1_privacy_policy)
+    - [📋 서비스 이용약관](/2_terms_of_service)
+    """)
 
 # Session state 초기화
 if 'reviews_data' not in st.session_state:
@@ -252,17 +418,24 @@ if analyze_button:
             all_reviews = []
             country_dataframes = {}  # 국가별 DataFrame 저장
             
+            # '전체 국가'가 선택되었는지 확인
+            if 'ALL' in selected_countries:
+                # 전체 국가 선택 시 모든 국가 수집 (ALL 제외)
+                countries_to_fetch = [key for key in country_options.keys() if key != 'ALL']
+            else:
+                countries_to_fetch = selected_countries
+            
             progress_bar = st.progress(0)
             status_text = st.empty()
             
-            total_countries = len(selected_countries)
-            for idx, country_key in enumerate(selected_countries):
+            total_countries = len(countries_to_fetch)
+            for idx, country_key in enumerate(countries_to_fetch):
                 country_info = country_options[country_key]
                 country_code = country_info['code']
                 country_name = country_info['name']
                 
-                status_text.text(f"{country_name} 리뷰 수집 중...")
-                reviews = fetch_reviews_rss(app_id, country_code, max_pages)
+                status_text.text(f"{country_name} 리뷰 수집 중... ({start_year}년 ~ {end_year}년)")
+                reviews = fetch_reviews_rss(app_id, country_code, max_pages, start_year, end_year)
                 
                 if reviews:
                     df_country = pd.DataFrame(reviews)
@@ -279,6 +452,10 @@ if analyze_button:
             
             status_text.empty()
             progress_bar.empty()
+            
+            # '전체 국가'가 선택된 경우 selected_countries를 실제 수집한 국가들로 업데이트
+            if 'ALL' in selected_countries:
+                selected_countries = countries_to_fetch
             
             # 세션 상태에 저장
             if all_reviews:
@@ -621,16 +798,39 @@ elif st.session_state.reviews_data is None:
     st.subheader("💡 예시")
     st.code("앱 ID: 1510564828 (Murmur - Voice Diary)", language="text")
 
-# 개발자 정보 (맨 아래 오른쪽)
+# 약관 및 개인정보처리방침 링크
 st.markdown("---")
 st.markdown("---")
-st.markdown(
-    """
-    <div style='text-align: right; color: #666; padding: 20px;'>
-        <p style='margin-bottom: 0.5em;'><strong>Developer:</strong> Chang Dong Wook</p>
-        <p><strong>Email:</strong> <a href='mailto:okdongzang@gmail.com'>okdongzang@gmail.com</a></p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+
+# 하단 푸터 영역
+footer_col1, footer_col2, footer_col3 = st.columns([2, 1, 1])
+
+with footer_col1:
+    # 개인정보처리방침 버튼 (st.page_link 사용 - Streamlit 1.31.0+)
+    try:
+        st.page_link("pages/1_privacy_policy.py", label="🔒 개인정보처리방침", icon=None)
+    except:
+        # 구버전 호환성을 위한 폴백
+        st.markdown(
+            """
+            <div style='text-align: left; padding: 5px 0;'>
+                <a href='/1_privacy_policy' class='privacy-button' onclick='window.location.href="/1_privacy_policy"; return false;'>🔒 개인정보처리방침</a>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+with footer_col2:
+    pass
+
+with footer_col3:
+    st.markdown(
+        """
+        <div style='text-align: right; color: #666; padding: 5px 0; font-size: 0.85em;'>
+            <p style='margin-bottom: 0.3em;'><strong>Developer:</strong> Chang Dong Wook</p>
+            <p><strong>Email:</strong> <a href='mailto:okdongzang@gmail.com' style='color: #666;'>okdongzang@gmail.com</a></p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
