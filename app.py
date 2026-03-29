@@ -33,11 +33,11 @@ st.markdown("""
 
 /* ── 기본 배경 ── */
 .stApp {
-    background-color: #BDBEFF;
+    background-color: #E5E5FF;
 }
 /* 메인 컨텐츠 영역 배경 */
 .stApp > div, .main > div {
-    background-color: #BDBEFF;
+    background-color: #E5E5FF;
 }
 
 /* ── 사이드바 ── */
@@ -435,9 +435,9 @@ st.markdown("""
     gap: 1rem;
 ">
     <div>
-        <div style="color:rgba(255,255,255,0.8); font-size:0.8rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.3rem;">App Store Analytics</div>
+        <div style="color:rgba(255,255,255,0.2); font-size:0.8rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.3rem;">App Store Analytics</div>
         <div style="color:#fff; font-size:1.5rem; font-weight:700; margin:0;">📱 리뷰 분석 대시보드</div>
-        <div style="color:rgba(255,255,255,0.7); font-size:0.85rem; margin-top:0.3rem;">앱스토어 리뷰를 수집하고 인사이트를 발견하세요</div>
+        <div style="color:rgba(255,255,255,0.2); font-size:0.85rem; margin-top:0.3rem;">앱스토어 리뷰를 수집하고 인사이트를 발견하세요</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -489,7 +489,7 @@ with st.sidebar:
                 font-size: 0.9rem; font-weight: 700; color: #1e1b4b; flex-shrink:0;
             ">{email[0].upper()}</div>
             <div style="overflow:hidden;">
-                <div style="font-size:0.72rem; color:rgba(255,255,255,0.6);">로그인 계정</div>
+                <div style="font-size:0.72rem; color:rgba(255,255,255,0.2);">로그인 계정</div>
                 <div style="font-size:0.82rem; color:#fff; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{email}</div>
             </div>
         </div>
@@ -503,7 +503,7 @@ with st.sidebar:
         st.markdown("---")
 
     st.markdown("""
-    <div style="font-size:0.7rem; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:0.1em; font-weight:600; margin-bottom:0.5rem;">
+    <div style="font-size:0.7rem; color:rgba(255,255,255,0.2); text-transform:uppercase; letter-spacing:0.1em; font-weight:600; margin-bottom:0.5rem;">
     ⚙ 분석 설정
     </div>
     """, unsafe_allow_html=True)
@@ -1037,6 +1037,7 @@ st.markdown("""
     border: 1px solid #e0e7ff;
     display: flex;
     justify-content: space-between;
+    ?dev=1231
     align-items: center;
 ">
     <div style="display:flex; gap:1.2rem; align-items:center;">
