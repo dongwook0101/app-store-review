@@ -225,6 +225,11 @@ hr {
     box-shadow: 0 1px 4px rgba(99,102,241,0.15);
 }
 
+/* ── 사이드바 입력 필드 텍스트 색상 ── */
+section[data-testid="stSidebar"] input {
+    color: #1e1b4b !important;
+}
+
 /* ── progress bar ── */
 .stProgress > div > div {
     background: linear-gradient(90deg, #6366f1, #818cf8) !important;
@@ -1066,7 +1071,7 @@ elif st.session_state.reviews_data is None:
                 <div style="background:#eef2ff; color:#6366f1; border-radius:8px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;">2</div>
                 <div>
                     <div style="font-weight:600; color:#1e1b4b; margin-bottom:0.2rem;">국가 및 기간 선택</div>
-                    <div style="font-size:0.82rem; color:#6b7280;">최대 2개 국가 비교 분석, 페이지당 최대 50개 리뷰 수집</div>
+                    <div style="font-size:0.82rem; color:#1e1b4b;">최대 2개 국가 비교 분석, 페이지당 최대 50개 리뷰 수집</div>
                 </div>
             </div>
             <div style="display:flex; gap:0.8rem; align-items:flex-start;">
