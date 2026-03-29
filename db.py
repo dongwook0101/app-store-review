@@ -34,15 +34,26 @@ def _sanitize_db_url(url: str) -> str:
     return url
 
 
+_engine_cache = None
+
 def get_engine():
     """Return a SQLAlchemy engine, or None if DATABASE_URL is not set."""
+    global _engine_cache
+    if _engine_cache is not None:
+        return _engine_cache
     url = _get_db_url()
     if not url:
         return None
     try:
         url = _sanitize_db_url(url)
-        engine = create_engine(url, pool_pre_ping=True, pool_size=5, max_overflow=2)
-        return engine
+        _engine_cache = create_engine(
+            url,
+            pool_pre_ping=True,
+            pool_size=3,
+            max_overflow=2,
+            pool_recycle=300,
+        )
+        return _engine_cache
     except Exception as e:
         print(f"[DB] Failed to create engine: {e}")
         return None
