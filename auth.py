@@ -193,18 +193,14 @@ def handle_oauth_callback():
         st.session_state.processed_oauth_codes = set()
 
     if 'code' not in query_params:
-        st.write("🔍 [콜백] code 파라미터 없음 → 건너뜀")
         return
 
     code = query_params.get('code', '')
-    st.write(f"🔍 [콜백] code 감지됨: {code[:20]}...")
 
     if code in st.session_state.processed_oauth_codes:
-        st.write("🔍 [콜백] 이미 처리된 코드 → 건너뜀")
         return
 
     if st.session_state.get('oauth_processing', False):
-        st.write("🔍 [콜백] oauth_processing=True → 건너뜀")
         return
 
     st.session_state.oauth_processing = True
@@ -212,11 +208,8 @@ def handle_oauth_callback():
 
     try:
         redirect_uri = get_redirect_uri()
-        st.write(f"🔍 [콜백] redirect_uri: {redirect_uri}")
-
         client_id, client_secret = _get_credentials()
 
-        st.write("🔍 [콜백] Google 토큰 요청 중...")
         token_response = req.post(
             'https://oauth2.googleapis.com/token',
             data={
@@ -229,13 +222,11 @@ def handle_oauth_callback():
             timeout=10
         )
         token_data = token_response.json()
-        st.write(f"🔍 [콜백] 토큰 응답: { {k: v for k, v in token_data.items() if k != 'access_token'} }")
 
         if 'error' in token_data:
             raise Exception(f"토큰 교환 실패: {token_data.get('error')} - {token_data.get('error_description', '')}")
 
         access_token = token_data['access_token']
-        st.write("🔍 [콜백] 액세스 토큰 획득 성공")
 
         user_response = req.get(
             'https://www.googleapis.com/oauth2/v2/userinfo',
@@ -244,7 +235,6 @@ def handle_oauth_callback():
         )
         user_response.raise_for_status()
         user_info = user_response.json()
-        st.write(f"🔍 [콜백] 사용자 정보: {user_info.get('email')}")
 
         st.session_state.authenticated = True
         st.session_state.user_info = user_info
@@ -256,12 +246,10 @@ def handle_oauth_callback():
         st.session_state.oauth_processing = False
         st.session_state.oauth_success = True
         success = True
-        st.write("🔍 [콜백] 인증 완료! rerun 예정...")
 
     except Exception as e:
         st.session_state.oauth_processing = False
         st.session_state.oauth_error = str(e)
-        st.write(f"🔍 [콜백] 오류 발생: {e}")
 
     if success:
         st.rerun()

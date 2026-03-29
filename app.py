@@ -29,16 +29,6 @@ st.set_page_config(
 #     st.write("Secrets Error:", e)
 
 # ── [DEBUG] 현재 상태 출력 ────────────────────────────────────────────
-with st.expander("🔍 디버그 정보 (문제 해결 후 제거)", expanded=True):
-    from auth import get_redirect_uri, get_authorization_url
-    import os
-    st.write("**redirect_uri:**", get_redirect_uri())
-    st.write("**server.headless:**", st.get_option("server.headless"))
-    try:
-        _debug_url, _ = get_authorization_url()
-        st.write("**생성된 auth_url:**", _debug_url)
-    except Exception as _e:
-        st.write("**auth_url 생성 오류:**", str(_e))
 
 # ── OAuth 콜백을 가장 먼저 처리 (CookieManager 이전) ──────────────────
 if 'code' in st.query_params and not st.session_state.get('authenticated'):
