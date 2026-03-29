@@ -227,7 +227,7 @@ hr {
 
 /* ── 사이드바 입력 필드 텍스트 색상 ── */
 section[data-testid="stSidebar"] input {
-    color: #1e1b4b !important;
+    color: #ffffff !important;
 }
 
 /* ── progress bar ── */
@@ -241,6 +241,15 @@ section[data-testid="stSidebar"] input {
     background: #eef2ff !important;
     color: #4338ca !important;
     border-radius: 6px !important;
+}
+/* 사이드바 multiselect 태그 */
+section[data-testid="stSidebar"] [data-baseweb="tag"] {
+    background: rgba(255,255,255,0.2) !important;
+    color: #ffffff !important;
+    border-radius: 6px !important;
+}
+section[data-testid="stSidebar"] [data-baseweb="tag"] span {
+    color: #ffffff !important;
 }
 
 /* ── 차트 컨테이너 배경 보호 ── */
