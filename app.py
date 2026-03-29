@@ -18,16 +18,26 @@ from auth import check_authentication, handle_oauth_callback, show_login_page
 # 페이지 설정
 st.set_page_config(
     page_title="앱스토어 리뷰 분석",
-    page_icon="📱",
     layout="wide"
 )
 
 # 전역 스타일
 st.markdown("""
 <style>
+/* ── 프리텐다드 폰트 ── */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+* {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+}
+
 /* ── 기본 배경 ── */
 .stApp {
-    background-color: #f4f6fb;
+    background-color: #BDBEFF;
+}
+/* 메인 컨텐츠 영역 배경 */
+.stApp > div, .main > div {
+    background-color: #BDBEFF;
 }
 
 /* ── 사이드바 ── */
@@ -61,6 +71,12 @@ section[data-testid="stSidebar"] h3 {
 }
 section[data-testid="stSidebar"] > div {
     padding-top: 1.5rem !important;
+}
+section[data-testid="stSidebar"] .stVerticalBlock {
+    gap: 0.4rem !important;
+}
+section[data-testid="stSidebar"] .element-container {
+    margin-bottom: 0 !important;
 }
 section[data-testid="stSidebar"] .stButton button {
     background: rgba(255,255,255,0.12) !important;
@@ -578,8 +594,8 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 📄 약관 및 정책")
     st.markdown("""
-    - [🔒 개인정보처리방침](/1_privacy_policy)
-    - [📋 서비스 이용약관](/2_terms_of_service)
+    - [개인정보처리방침](/1_privacy_policy)
+    - [서비스 이용약관](/2_terms_of_service)
     """)
 
 # Session state 초기화
