@@ -28,8 +28,29 @@ st.set_page_config(
 # except Exception as e:
 #     st.write("Secrets Error:", e)
 
-# 쿠키 매니저 초기화
-# st.cache_resource 제거 (위젯 사용 경고 방지)
+# ── [DEBUG] 현재 상태 출력 ────────────────────────────────────────────
+with st.expander("🔍 디버그 정보 (문제 해결 후 제거)", expanded=True):
+    from auth import get_redirect_uri, get_authorization_url
+    import os
+    st.write("**redirect_uri:**", get_redirect_uri())
+    st.write("**server.headless:**", st.get_option("server.headless"))
+    try:
+        _debug_url, _ = get_authorization_url()
+        st.write("**생성된 auth_url:**", _debug_url)
+    except Exception as _e:
+        st.write("**auth_url 생성 오류:**", str(_e))
+
+# ── OAuth 콜백을 가장 먼저 처리 (CookieManager 이전) ──────────────────
+if 'code' in st.query_params and not st.session_state.get('authenticated'):
+    handle_oauth_callback()
+    # handle_oauth_callback 내부에서 st.rerun()이 호출되므로 아래로 내려오지 않음
+
+# ── 개발자 우회 접속 처리 ──────────────────────────────────────────────
+if 'dev' in st.query_params and not st.session_state.get('authenticated'):
+    from auth import check_authentication as _check
+    _check()  # dev 파라미터 처리 (check_authentication 내부에서 처리됨)
+
+# ── CookieManager 초기화 ───────────────────────────────────────────────
 def get_manager():
     return stx.CookieManager()
 
@@ -38,60 +59,20 @@ if 'cookie_manager' not in st.session_state:
 
 cookie_manager = st.session_state.cookie_manager
 
-# 쿠키에서 인증 정보 로드
-if 'authenticated' not in st.session_state:
+# 쿠키에서 세션 복원 (이미 인증 안 된 경우만)
+if not st.session_state.get('authenticated'):
     auth_cookie = cookie_manager.get(cookie="auth_token")
     if auth_cookie:
-        # 쿠키가 있으면 인증된 것으로 처리 (간소화된 예시)
-        # 실제로는 토큰 검증 등이 필요할 수 있음
         st.session_state.authenticated = True
-        # 사용자 정보도 쿠키나 별도 저장소에서 복원할 수 있음
-        # 여기서는 간단히 플래그만 설정
-        st.session_state.user_info = {'email': 'Restored Session'} 
+        st.session_state.user_info = {'email': 'Restored Session'}
 
-# 인증 체크 및 OAuth 콜백 처리
-# 먼저 인증 상태 확인 (콜백 처리 전)
-is_authenticated_before = check_authentication()
-
-# 개발자 우회 접속 등으로 인증이 방금 완료된 경우 리런
-if is_authenticated_before and 'dev' in st.query_params:
-    st.rerun()
-
-# OAuth 콜백 처리 (세션 상태 업데이트)
-# 이미 인증되어 있으면 콜백 처리 건너뛰기
-if not is_authenticated_before:
-    handle_oauth_callback()
-
-# 인증 상태 확인 (콜백 처리 후)
+# ── 인증 상태 확인 ─────────────────────────────────────────────────────
 is_authenticated = check_authentication()
-
-# 로그인 성공 시 쿠키 설정 및 query params 정리
-if st.session_state.get('oauth_success', False):
-    try:
-        cookie_manager.set("auth_token", "valid_token", expires_at=datetime.now().replace(year=datetime.now().year + 1))
-    except Exception as e:
-        st.warning(f"쿠키 설정 오류: {e}")
-    st.session_state.oauth_success = False
-
-# query params에 code나 state가 있으면 정리 (가능한 경우만)
-if ('code' in st.query_params or 'state' in st.query_params):
-    if is_authenticated:
-        # 로그인 완료 후 URL 정리하기 (선택사항 - 실패해도 무시)
-        try:
-            params_to_keep = {}
-            for k, v in st.query_params.items():
-                if k not in ['code', 'state']:
-                    params_to_keep[k] = v
-            
-            st.query_params.clear()
-            for key, value in params_to_keep.items():
-                st.query_params[key] = value
-        except:
-            # query params 수정 실패해도 앱 진행
-            pass
 
 # 인증되지 않은 경우 로그인 페이지 표시
 if not is_authenticated:
+    if st.session_state.get('oauth_error'):
+        st.error(f"로그인 오류: {st.session_state.pop('oauth_error')}")
     show_login_page()
     st.stop()
 

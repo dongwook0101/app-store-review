@@ -5,11 +5,8 @@ Google OAuth 인증 모듈
 
 import streamlit as st
 from google_auth_oauthlib.flow import Flow
-from google.oauth2.credentials import Credentials
 import os
-import json
-from urllib.parse import urlparse, parse_qs
-from requests_oauthlib import OAuth2Session
+
 
 # .env 파일 로드 (있는 경우)
 try:
@@ -18,116 +15,88 @@ try:
 except ImportError:
     pass  # python-dotenv가 설치되지 않은 경우 무시
 
-# OAuth 2.0 클라이언트 설정
-# Google Cloud Console에서 발급받은 클라이언트 ID와 시크릿을 사용
-# 환경 변수에서 가져오거나, 없으면 기본값 사용
-CLIENT_CONFIG = {
-    "web": {
-        "client_id": os.getenv("GOOGLE_CLIENT_ID") or st.secrets.get("GOOGLE_CLIENT_ID", "403626382842-512spe9nk3dvj2omjj2iqe1880k39btu.apps.googleusercontent.com"),
-        "client_secret": os.getenv("GOOGLE_CLIENT_SECRET") or st.secrets.get("GOOGLE_CLIENT_SECRET", "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"),
-        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-        "token_uri": "https://oauth2.googleapis.com/token",
-        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-        "redirect_uris": [
-            "http://localhost:8501",
-            "http://localhost:8502",
-            "http://localhost:8503",
-            "http://127.0.0.1:8501",
-            "http://127.0.0.1:8502",
-            "http://127.0.0.1:8503",
-            "https://appstore-review-analyzer.streamlit.app/",
-            "https://appstore-review-analyzer.streamlit.app"
-        ]
-    }
-}
+def _get_secret(key, default=""):
+    """st.secrets에서 안전하게 값을 가져옴 (없으면 default 반환)"""
+    try:
+        return st.secrets.get(key, default) or default
+    except Exception:
+        return default
+
+CLOUD_REDIRECT_URI = "https://appstore-review-analyzer.streamlit.app/"
+LOCAL_REDIRECT_URI = "http://localhost:8501"
 
 def get_redirect_uri():
     """현재 환경에 맞는 리디렉션 URI 반환"""
-    try:
-        # 1. .env 또는 환경 변수에 직접 설정된 리디렉션 URI가 있으면 최우선 사용
-        manual_redirect_uri = os.getenv("REDIRECT_URI")
-        if manual_redirect_uri:
-            return manual_redirect_uri
+    # 1. Secrets 또는 환경변수에 명시된 값 최우선
+    uri = _get_secret("REDIRECT_URI", "") or os.getenv("REDIRECT_URI", "")
+    if uri:
+        return uri
 
-        # 2. Streamlit Cloud 환경 확인
-        # Streamlit Cloud에서는 여러 환경 변수가 설정됨
-        is_streamlit_cloud = (
-            os.getenv("STREAMLIT_SERVER_BASE_URL") or
-            os.getenv("STREAMLIT_BASE_URL_PATH") or
-            os.getenv("STREAMLIT_SERVER_PORT") == "8501" or
-            st.get_option("server.headless")  # Streamlit Cloud는 headless 모드
-        )
-        
-        if is_streamlit_cloud:
-            # Streamlit Cloud 환경
-            base_url = os.getenv("STREAMLIT_SERVER_BASE_URL", "https://appstore-review-analyzer.streamlit.app")
-            base_url = base_url.rstrip('/')
-            return f"{base_url}/"
-        else:
-            # 로컬 환경
-            # 로컬 개발 환경에서 HTTP 허용
-            os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
-            return "http://localhost:8501"
-    except:
-        # 오류 발생 시 기본값 사용 (배포 환경으로 가정)
-        return "https://appstore-review-analyzer.streamlit.app/"
+    # 2. STREAMLIT_SHARING_MODE 또는 HOME 경로로 Streamlit Cloud 판단
+    #    Streamlit Cloud는 HOME=/home/adminuser 환경
+    home = os.getenv("HOME", "")
+    if "adminuser" in home or os.getenv("STREAMLIT_SHARING_MODE"):
+        return CLOUD_REDIRECT_URI
+
+    # 3. 로컬 기본값
+    os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+    return LOCAL_REDIRECT_URI
 
 SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
 
-def get_flow():
+def _get_credentials():
+    """OAuth 클라이언트 ID/Secret 반환"""
+    client_id = os.getenv("GOOGLE_CLIENT_ID") or _get_secret("GOOGLE_CLIENT_ID", "403626382842-512spe9nk3dvj2omjj2iqe1880k39btu.apps.googleusercontent.com")
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET") or _get_secret("GOOGLE_CLIENT_SECRET", "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")
+    return client_id, client_secret
+
+def get_flow(state=None):
     """OAuth Flow 객체 생성"""
     redirect_uri = get_redirect_uri()
-    
-    # 클라이언트 설정 (런타임에 secrets 확인)
-    client_config = {
-        "client_id": os.getenv("GOOGLE_CLIENT_ID") or st.secrets.get("GOOGLE_CLIENT_ID", "403626382842-512spe9nk3dvj2omjj2iqe1880k39btu.apps.googleusercontent.com"),
-        "client_secret": os.getenv("GOOGLE_CLIENT_SECRET") or st.secrets.get("GOOGLE_CLIENT_SECRET", "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"),
-        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-        "token_uri": "https://oauth2.googleapis.com/token",
-        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-        "redirect_uris": [
-            "http://localhost:8501",
-            "http://localhost:8502",
-            "http://localhost:8503",
-            "http://127.0.0.1:8501",
-            "http://127.0.0.1:8502",
-            "http://127.0.0.1:8503",
-            "https://appstore-review-analyzer.streamlit.app/",
-            "https://appstore-review-analyzer.streamlit.app"
-        ]
-    }
-    
-    # OAuth2Session 생성
-    oauth = OAuth2Session(
-        client_id=client_config['client_id'],
-        redirect_uri=redirect_uri,
-        scope=SCOPES
-    )
-    
-    # 로컬 환경에서는 HTTPS 강제 해제
+    client_id, client_secret = _get_credentials()
+
     if redirect_uri.startswith('http://'):
-        oauth.enforce_https = False
-    
-    # Flow 객체 생성
-    flow_config = {
-        "web": client_config
+        os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
+    client_config = {
+        "web": {
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+            "redirect_uris": [redirect_uri]
+        }
     }
-    flow = Flow(
-        oauth,
-        client_type='web',
-        client_config=flow_config
+
+    flow = Flow.from_client_config(
+        client_config,
+        scopes=SCOPES,
+        redirect_uri=redirect_uri,
+        state=state
     )
     return flow
 
 def get_authorization_url():
-    """인증 URL 생성"""
-    flow = get_flow()
-    authorization_url, state = flow.authorization_url(
-        access_type='offline',
-        include_granted_scopes='true',
-        prompt='consent'
-    )
-    return authorization_url, state
+    """인증 URL 직접 생성 (Flow 라이브러리 우회)"""
+    import secrets as sec
+    from urllib.parse import urlencode
+
+    client_id, _ = _get_credentials()
+    redirect_uri = get_redirect_uri()
+    state = sec.token_urlsafe(32)
+
+    params = {
+        'client_id': client_id,
+        'redirect_uri': redirect_uri,
+        'scope': ' '.join(SCOPES),
+        'response_type': 'code',
+        'access_type': 'offline',
+        'prompt': 'consent',
+        'state': state,
+    }
+    auth_url = 'https://accounts.google.com/o/oauth2/v2/auth?' + urlencode(params)
+    return auth_url, state
 
 def get_user_info(credentials):
     """사용자 정보 가져오기"""
@@ -216,134 +185,86 @@ def check_authentication():
 
 def handle_oauth_callback():
     """OAuth 콜백 처리"""
+    import requests as req
+
     query_params = st.query_params
-    
-    # 세션 상태 초기화
+
     if 'processed_oauth_codes' not in st.session_state:
         st.session_state.processed_oauth_codes = set()
-    if 'oauth_processing' not in st.session_state:
-        st.session_state.oauth_processing = False
-    
-    # 이미 인증되어 있고 사용자 정보가 있으면 처리하지 않음
-    if (st.session_state.get('authenticated', False) and 
-        st.session_state.get('user_info') is not None):
-        # query params에 code가 있으면 제거만 시도
-        if 'code' in query_params or 'state' in query_params:
-            try:
-                # 기존 params를 순회하면서 code, state 제외하고 다시 설정
-                params_to_keep = {}
-                has_code_or_state = False
-                for k, v in query_params.items():
-                    if k not in ['code', 'state']:
-                        params_to_keep[k] = v
-                    else:
-                        has_code_or_state = True
-                
-                # code나 state가 있었으면 URL 정리
-                if has_code_or_state:
-                    st.query_params.clear()
-                    for key, value in params_to_keep.items():
-                        st.query_params[key] = value
-            except:
-                pass
+
+    if 'code' not in query_params:
+        st.write("🔍 [콜백] code 파라미터 없음 → 건너뜀")
         return
-    
-    if 'code' in query_params:
-        code = query_params.get('code', '')
-        
-        # 이미 처리된 코드면 무시하고 query params만 제거
-        if code in st.session_state.processed_oauth_codes:
-            try:
-                params_to_keep = {}
-                for k, v in query_params.items():
-                    if k not in ['code', 'state']:
-                        params_to_keep[k] = v
-                
-                st.query_params.clear()
-                for key, value in params_to_keep.items():
-                    st.query_params[key] = value
-            except:
-                pass
-            return
-        
-        # 콜백 처리 중 플래그 확인 (무한 루프 방지)
-        if st.session_state.get('oauth_processing', False):
-            return
-        
-        # 콜백 처리 중 플래그 설정
-        st.session_state.oauth_processing = True
-        
-        try:
-            state = query_params.get('state', '')
-            
-            # 현재 환경에 맞는 리디렉션 URI 가져오기
-            redirect_uri = get_redirect_uri()
-            
-            # authorization_response URL 구성
-            authorization_response = f"{redirect_uri}?code={code}"
-            if state:
-                authorization_response += f"&state={state}"
-            
-            flow = get_flow()
-            
-            try:
-                flow.fetch_token(authorization_response=authorization_response)
-            except Exception as e:
-                st.error(f"❌ 토큰 획득 실패: {str(e)}")
-                raise
-            
-            credentials = flow.credentials
-            
-            # 사용자 정보 가져오기
-            try:
-                user_info = get_user_info(credentials)
-            except Exception as e:
-                st.error(f"❌ 사용자 정보 조회 실패")
-                raise
-            
-            # 세션 상태에 저장 (중요: 먼저 저장)
-            st.session_state.authenticated = True
-            st.session_state.user_info = user_info
-            st.session_state.credentials = {
-                'token': credentials.token,
-                'refresh_token': credentials.refresh_token,
-                'token_uri': credentials.token_uri,
-                'client_id': credentials.client_id,
-                'client_secret': credentials.client_secret,
-                'scopes': credentials.scopes
-            }
-            
-            # 처리된 코드로 표시
-            st.session_state.processed_oauth_codes.add(code)
-            
-            # 콜백 처리 완료 플래그 해제
-            st.session_state.oauth_processing = False
-            
-            # 인증 완료 플래그 설정
-            st.session_state.oauth_success = True
-            
-            # URL에서 code와 state 제거 (가능한 경우만)
-            try:
-                params_to_keep = {}
-                for k, v in query_params.items():
-                    if k not in ['code', 'state']:
-                        params_to_keep[k] = v
-                
-                st.query_params.clear()
-                for key, value in params_to_keep.items():
-                    st.query_params[key] = value
-            except:
-                # query params 수정 실패는 무시
-                pass
-            
-            st.success("✅ 로그인 성공!")
-            st.rerun()
-            
-        except Exception as e:
-            # 오류 발생 시 플래그 해제
-            st.session_state.oauth_processing = False
-            st.error(f"인증 중 오류 발생: {str(e)}")
-            # 기존 인증 상태는 유지
+
+    code = query_params.get('code', '')
+    st.write(f"🔍 [콜백] code 감지됨: {code[:20]}...")
+
+    if code in st.session_state.processed_oauth_codes:
+        st.write("🔍 [콜백] 이미 처리된 코드 → 건너뜀")
+        return
+
+    if st.session_state.get('oauth_processing', False):
+        st.write("🔍 [콜백] oauth_processing=True → 건너뜀")
+        return
+
+    st.session_state.oauth_processing = True
+    success = False
+
+    try:
+        redirect_uri = get_redirect_uri()
+        st.write(f"🔍 [콜백] redirect_uri: {redirect_uri}")
+
+        client_id, client_secret = _get_credentials()
+
+        st.write("🔍 [콜백] Google 토큰 요청 중...")
+        token_response = req.post(
+            'https://oauth2.googleapis.com/token',
+            data={
+                'code': code,
+                'client_id': client_id,
+                'client_secret': client_secret,
+                'redirect_uri': redirect_uri,
+                'grant_type': 'authorization_code'
+            },
+            timeout=10
+        )
+        token_data = token_response.json()
+        st.write(f"🔍 [콜백] 토큰 응답: { {k: v for k, v in token_data.items() if k != 'access_token'} }")
+
+        if 'error' in token_data:
+            raise Exception(f"토큰 교환 실패: {token_data.get('error')} - {token_data.get('error_description', '')}")
+
+        access_token = token_data['access_token']
+        st.write("🔍 [콜백] 액세스 토큰 획득 성공")
+
+        user_response = req.get(
+            'https://www.googleapis.com/oauth2/v2/userinfo',
+            headers={'Authorization': f'Bearer {access_token}'},
+            timeout=10
+        )
+        user_response.raise_for_status()
+        user_info = user_response.json()
+        st.write(f"🔍 [콜백] 사용자 정보: {user_info.get('email')}")
+
+        st.session_state.authenticated = True
+        st.session_state.user_info = user_info
+        st.session_state.credentials = {
+            'token': access_token,
+            'refresh_token': token_data.get('refresh_token'),
+        }
+        st.session_state.processed_oauth_codes.add(code)
+        st.session_state.oauth_processing = False
+        st.session_state.oauth_success = True
+        success = True
+        st.write("🔍 [콜백] 인증 완료! rerun 예정...")
+
+    except Exception as e:
+        st.session_state.oauth_processing = False
+        st.session_state.oauth_error = str(e)
+        st.write(f"🔍 [콜백] 오류 발생: {e}")
+
+    if success:
+        st.rerun()
 
 def show_login_page():
     """로그인 페이지 표시"""
@@ -353,17 +274,9 @@ def show_login_page():
     st.markdown("### Google 계정으로 로그인하세요")
     st.info("📱 앱스토어 리뷰 분석 도구를 사용하려면 Google 계정으로 로그인해주세요.")
     
-    # 환경 변수 확인
-    if not CLIENT_CONFIG["web"]["client_id"] or not CLIENT_CONFIG["web"]["client_secret"]:
-        st.error("⚠️ Google OAuth 설정이 필요합니다.")
-        st.markdown("""
-        **설정 방법:**
-        1. Google Cloud Console에서 OAuth 2.0 클라이언트 ID를 생성하세요
-        2. 환경 변수를 설정하세요:
-           - `GOOGLE_CLIENT_ID`: 클라이언트 ID
-           - `GOOGLE_CLIENT_SECRET`: 클라이언트 시크릿
-        3. 리다이렉트 URI에 `http://localhost:8501`을 추가하세요
-        """)
+    client_id, client_secret = _get_credentials()
+    if not client_id or not client_secret:
+        st.error("⚠️ Google OAuth 설정이 필요합니다. Streamlit Cloud Secrets에 GOOGLE_CLIENT_ID와 GOOGLE_CLIENT_SECRET을 등록하세요.")
         return
     
     col1, col2, col3 = st.columns([1, 2, 1])
