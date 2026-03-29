@@ -36,7 +36,7 @@ st.markdown("""
     background-color: #E5E5FF;
 }
 /* 메인 컨텐츠 영역 배경 */
-.stApp > div, .main > div {
+section.main, section.main > div {
     background-color: #E5E5FF;
 }
 
@@ -237,6 +237,25 @@ hr {
     color: #4338ca !important;
     border-radius: 6px !important;
 }
+
+/* ── 차트 컨테이너 배경 보호 ── */
+[data-testid="stVegaLiteChart"],
+[data-testid="stArrowVegaLiteChart"],
+[data-testid="stVegaLiteChart"] > div,
+[data-testid="stArrowVegaLiteChart"] > div,
+.vega-embed,
+.vega-embed canvas,
+canvas {
+    background: #ffffff !important;
+    border-radius: 10px;
+}
+[data-testid="element-container"]:has([data-testid="stVegaLiteChart"]),
+[data-testid="element-container"]:has([data-testid="stArrowVegaLiteChart"]) {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 0.5rem;
+    border: 1px solid #e0e7ff;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -277,6 +296,15 @@ if not is_authenticated:
         st.error(f"로그인 오류: {st.session_state.pop('oauth_error')}")
     show_login_page()
     st.stop()
+
+# ── DB 초기화 (인증 후 최초 1회) ──────────────────────────────────────
+if 'db_initialized' not in st.session_state:
+    try:
+        from db import init_db
+        init_db()
+    except Exception:
+        pass
+    st.session_state.db_initialized = True
 
 # 세션 상태 초기화
 if 'reviews_data' not in st.session_state:
@@ -495,6 +523,13 @@ with st.sidebar:
         </div>
         """, unsafe_allow_html=True)
         if st.button("로그아웃", use_container_width=True):
+            _logout_email = (st.session_state.user_info or {}).get('email', '')
+            try:
+                from tracker import close_user_session, log_event
+                close_user_session(_logout_email)
+                log_event(_logout_email, 'logout')
+            except Exception:
+                pass
             st.session_state.authenticated = False
             st.session_state.user_info = None
             st.session_state.credentials = None
@@ -638,6 +673,18 @@ if analyze_button:
         if not selected_countries:
             st.error("⚠️ 분석할 국가를 최소 1개 이상 선택해주세요.")
         else:
+            # DB: 분석 시작 이벤트
+            try:
+                from tracker import log_event
+                log_event(
+                    email=(st.session_state.user_info or {}).get('email', ''),
+                    action_type='start_analysis',
+                    app_id=app_id_input,
+                    selected_countries=selected_countries,
+                )
+            except Exception:
+                pass
+
             # 리뷰 수집
             all_reviews = []
             country_dataframes = {}  # 국가별 DataFrame 저장
@@ -689,6 +736,18 @@ if analyze_button:
                     'selected_countries': selected_countries,
                     'country_options': country_options
                 }
+                # DB: 분석 완료 이벤트
+                try:
+                    from tracker import log_event
+                    log_event(
+                        email=(st.session_state.user_info or {}).get('email', ''),
+                        action_type='complete_analysis',
+                        app_id=app_id_input,
+                        selected_countries=selected_countries,
+                        details={'total_reviews': len(all_reviews)},
+                    )
+                except Exception:
+                    pass
 
 # 분석 결과 표시 (세션 상태에 데이터가 있으면)
 if st.session_state.reviews_data is not None:

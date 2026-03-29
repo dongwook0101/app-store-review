@@ -247,6 +247,19 @@ def handle_oauth_callback():
         st.session_state.oauth_success = True
         success = True
 
+        # DB: 사용자 upsert 및 로그인 이벤트 기록
+        try:
+            from tracker import upsert_user_on_login, log_event
+            db_session_id = upsert_user_on_login(
+                email=user_info.get('email', ''),
+                name=user_info.get('name'),
+                picture=user_info.get('picture'),
+            )
+            st.session_state.db_session_id = db_session_id
+            log_event(user_info.get('email', ''), 'login')
+        except Exception:
+            pass
+
     except Exception as e:
         st.session_state.oauth_processing = False
         st.session_state.oauth_error = str(e)
@@ -286,7 +299,7 @@ def show_login_page():
                     font-weight: 500;
                     font-size: 16px;
                 ">
-                    🔵 Google로 로그인
+                    Google로 로그인
                 </a>
             </div>
             """, unsafe_allow_html=True)
