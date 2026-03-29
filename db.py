@@ -17,12 +17,30 @@ def _get_db_url() -> str:
         return os.getenv("DATABASE_URL", "")
 
 
+def _sanitize_db_url(url: str) -> str:
+    """URL 비밀번호의 특수문자([, ] 등)를 percent-encode해서 파싱 오류 방지."""
+    from urllib.parse import urlparse, urlunparse, quote
+    try:
+        parsed = urlparse(url)
+        if parsed.password and any(c in parsed.password for c in "[]@"):
+            encoded_pw = quote(parsed.password, safe="")
+            netloc = f"{parsed.username}:{encoded_pw}@{parsed.hostname}"
+            if parsed.port:
+                netloc += f":{parsed.port}"
+            parsed = parsed._replace(netloc=netloc)
+            return urlunparse(parsed)
+    except Exception:
+        pass
+    return url
+
+
 def get_engine():
     """Return a SQLAlchemy engine, or None if DATABASE_URL is not set."""
     url = _get_db_url()
     if not url:
         return None
     try:
+        url = _sanitize_db_url(url)
         engine = create_engine(url, pool_pre_ping=True, pool_size=5, max_overflow=2)
         return engine
     except Exception as e:
