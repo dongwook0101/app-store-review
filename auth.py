@@ -269,7 +269,7 @@ def handle_oauth_callback():
 
 def show_login_page():
     """로그인 페이지 표시"""
-    st.title("🔐 로그인")
+    st.title("로그인")
     st.markdown("---")
     
     st.markdown("### Google 계정으로 로그인하세요")

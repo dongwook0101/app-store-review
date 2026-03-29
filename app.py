@@ -287,10 +287,30 @@ cookie_manager = st.session_state.cookie_manager
 
 # 쿠키에서 세션 복원 (이미 인증 안 된 경우만)
 if not st.session_state.get('authenticated'):
-    auth_cookie = cookie_manager.get(cookie="auth_token")
-    if auth_cookie:
-        st.session_state.authenticated = True
-        st.session_state.user_info = {'email': 'Restored Session'}
+    import json as _json
+    _user_cookie = cookie_manager.get(cookie="user_info")
+    if _user_cookie:
+        try:
+            _stored = _json.loads(_user_cookie)
+            if _stored.get('email'):
+                st.session_state.authenticated = True
+                st.session_state.user_info = _stored
+        except Exception:
+            pass
+
+# 로그인 성공 직후 user_info를 쿠키에 저장 (최초 1회)
+if st.session_state.get('authenticated') and st.session_state.get('user_info'):
+    if not st.session_state.get('user_cookie_saved'):
+        import json as _json
+        try:
+            cookie_manager.set(
+                "user_info",
+                _json.dumps(st.session_state.user_info, ensure_ascii=False),
+                expires_at=datetime.now().replace(year=datetime.now().year + 1)
+            )
+        except Exception:
+            pass
+        st.session_state.user_cookie_saved = True
 
 # ── 인증 상태 확인 ─────────────────────────────────────────────────────
 is_authenticated = check_authentication()
@@ -538,7 +558,12 @@ with st.sidebar:
             st.session_state.authenticated = False
             st.session_state.user_info = None
             st.session_state.credentials = None
-            cookie_manager.delete("auth_token")
+            st.session_state.user_cookie_saved = False
+            try:
+                cookie_manager.delete("auth_token")
+                cookie_manager.delete("user_info")
+            except Exception:
+                pass
             st.rerun()
         st.markdown("---")
 
