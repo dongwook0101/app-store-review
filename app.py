@@ -22,11 +22,207 @@ st.set_page_config(
     layout="wide"
 )
 
-# 디버깅: Secrets 로드 확인 (개발 완료 후 제거)
-# try:
-#     st.write("Secrets Loaded:", st.secrets.get("DEV_PASSWORD"))
-# except Exception as e:
-#     st.write("Secrets Error:", e)
+# 전역 스타일
+st.markdown("""
+<style>
+/* ── 기본 배경 ── */
+.stApp {
+    background-color: #f4f6fb;
+}
+
+/* ── 사이드바 ── */
+section[data-testid="stSidebar"] {
+    background: linear-gradient(160deg, #1e1b4b 0%, #312e81 100%);
+    border-right: none;
+}
+section[data-testid="stSidebar"] * {
+    color: #e0e7ff !important;
+}
+section[data-testid="stSidebar"] .stTextInput input,
+section[data-testid="stSidebar"] .stSelectbox select,
+section[data-testid="stSidebar"] .stMultiSelect div {
+    background-color: rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(255,255,255,0.15) !important;
+    color: #fff !important;
+    border-radius: 8px !important;
+}
+section[data-testid="stSidebar"] .stSlider .stSlider {
+    color: #818cf8 !important;
+}
+section[data-testid="stSidebar"] hr {
+    border-color: rgba(255,255,255,0.15) !important;
+    margin: 0.6rem 0 !important;
+}
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3 {
+    color: #fff !important;
+    font-weight: 600 !important;
+}
+section[data-testid="stSidebar"] > div {
+    padding-top: 1.5rem !important;
+}
+section[data-testid="stSidebar"] .stButton button {
+    background: rgba(255,255,255,0.12) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    color: #fff !important;
+    border-radius: 8px !important;
+    transition: background 0.2s;
+}
+section[data-testid="stSidebar"] .stButton button:hover {
+    background: rgba(255,255,255,0.2) !important;
+}
+section[data-testid="stSidebar"] .stButton [data-testid="baseButton-primary"] {
+    background: linear-gradient(135deg, #6366f1, #818cf8) !important;
+    border: none !important;
+}
+
+/* ── 메인 영역 상단 여백 줄이기 ── */
+.block-container {
+    padding-top: 1.5rem !important;
+    padding-bottom: 2rem !important;
+    max-width: 1200px;
+}
+
+/* ── 페이지 타이틀 ── */
+h1 {
+    color: #1e1b4b !important;
+    font-weight: 700 !important;
+    font-size: 1.7rem !important;
+}
+h2 {
+    color: #312e81 !important;
+    font-weight: 600 !important;
+    font-size: 1.2rem !important;
+}
+h3 {
+    color: #4338ca !important;
+    font-weight: 600 !important;
+}
+
+/* ── 메트릭 카드 ── */
+[data-testid="metric-container"] {
+    background: #fff;
+    border: 1px solid #e0e7ff;
+    border-radius: 14px;
+    padding: 1.1rem 1.3rem !important;
+    box-shadow: 0 2px 8px rgba(99,102,241,0.07);
+}
+[data-testid="metric-container"] label {
+    color: #6b7280 !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+[data-testid="metric-container"] [data-testid="stMetricValue"] {
+    color: #1e1b4b !important;
+    font-size: 1.8rem !important;
+    font-weight: 700 !important;
+}
+
+/* ── 분석 시작 버튼 ── */
+.stButton button[kind="primary"] {
+    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%) !important;
+    border: none !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em;
+    height: 2.7rem;
+    box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.stButton button[kind="primary"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(99,102,241,0.4);
+}
+
+/* ── 일반 버튼 ── */
+.stButton button[kind="secondary"] {
+    border-radius: 8px !important;
+    border-color: #c7d2fe !important;
+    color: #4338ca !important;
+}
+
+/* ── 다운로드 버튼 ── */
+[data-testid="stDownloadButton"] button {
+    border-radius: 8px !important;
+    border: 1px solid #c7d2fe !important;
+    color: #4338ca !important;
+    font-weight: 500 !important;
+    width: 100%;
+}
+[data-testid="stDownloadButton"] button:hover {
+    background: #eef2ff !important;
+}
+
+/* ── 데이터프레임 ── */
+[data-testid="stDataFrame"] {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e0e7ff;
+    box-shadow: 0 2px 8px rgba(99,102,241,0.06);
+}
+
+/* ── 성공/경고/에러 메시지 ── */
+[data-testid="stAlert"] {
+    border-radius: 10px !important;
+    border-left-width: 4px !important;
+}
+
+/* ── 섹션 카드 래퍼 ── */
+.card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 1.3rem 1.5rem;
+    border: 1px solid #e0e7ff;
+    box-shadow: 0 2px 8px rgba(99,102,241,0.06);
+    margin-bottom: 1rem;
+}
+
+/* ── 구분선 ── */
+hr {
+    border-color: #e0e7ff !important;
+}
+
+/* ── info 박스 ── */
+[data-testid="stAlert"][kind="info"] {
+    background: #eef2ff !important;
+    border-left-color: #6366f1 !important;
+    color: #3730a3 !important;
+}
+
+/* ── 탭 ── */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 4px;
+    background: #eef2ff;
+    border-radius: 10px;
+    padding: 4px;
+}
+.stTabs [data-baseweb="tab"] {
+    border-radius: 7px;
+    font-weight: 500;
+}
+.stTabs [aria-selected="true"] {
+    background: #fff !important;
+    color: #4338ca !important;
+    box-shadow: 0 1px 4px rgba(99,102,241,0.15);
+}
+
+/* ── progress bar ── */
+.stProgress > div > div {
+    background: linear-gradient(90deg, #6366f1, #818cf8) !important;
+    border-radius: 4px;
+}
+
+/* ── multiselect 태그 ── */
+[data-baseweb="tag"] {
+    background: #eef2ff !important;
+    color: #4338ca !important;
+    border-radius: 6px !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ── [DEBUG] 현재 상태 출력 ────────────────────────────────────────────
 
@@ -212,8 +408,23 @@ def get_app_info(app_id):
     return None
 
 # 메인 UI
-st.title("📱 앱스토어 리뷰 분석 도구")
-st.markdown("---")
+st.markdown("""
+<div style="
+    background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+    border-radius: 16px;
+    padding: 1.4rem 2rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+">
+    <div>
+        <div style="color:rgba(255,255,255,0.8); font-size:0.8rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.3rem;">App Store Analytics</div>
+        <div style="color:#fff; font-size:1.5rem; font-weight:700; margin:0;">📱 리뷰 분석 대시보드</div>
+        <div style="color:rgba(255,255,255,0.7); font-size:0.85rem; margin-top:0.3rem;">앱스토어 리뷰를 수집하고 인사이트를 발견하세요</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 # 사이드바에 입력 폼
 with st.sidebar:
@@ -243,17 +454,43 @@ with st.sidebar:
     
     # 사용자 정보 표시 (사이드바 상단)
     if st.session_state.user_info:
-        st.markdown(f"**👤 로그인:** {st.session_state.user_info.get('email', 'Unknown')}")
-        if st.button("🚪 로그아웃", use_container_width=True):
+        email = st.session_state.user_info.get('email', 'Unknown')
+        st.markdown(f"""
+        <div style="
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 0.7rem 0.9rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        ">
+            <div style="
+                width: 32px; height: 32px;
+                background: linear-gradient(135deg, #818cf8, #c7d2fe);
+                border-radius: 50%;
+                display: flex; align-items: center; justify-content: center;
+                font-size: 0.9rem; font-weight: 700; color: #1e1b4b; flex-shrink:0;
+            ">{email[0].upper()}</div>
+            <div style="overflow:hidden;">
+                <div style="font-size:0.72rem; color:rgba(255,255,255,0.6);">로그인 계정</div>
+                <div style="font-size:0.82rem; color:#fff; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{email}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("로그아웃", use_container_width=True):
             st.session_state.authenticated = False
             st.session_state.user_info = None
             st.session_state.credentials = None
-            # 로그아웃 시 쿠키 삭제
             cookie_manager.delete("auth_token")
             st.rerun()
         st.markdown("---")
-    
-    st.header("⚙️ 설정")
+
+    st.markdown("""
+    <div style="font-size:0.7rem; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:0.1em; font-weight:600; margin-bottom:0.5rem;">
+    ⚙ 분석 설정
+    </div>
+    """, unsafe_allow_html=True)
     
     app_id_input = st.text_input(
         "앱 ID",
@@ -458,8 +695,10 @@ if st.session_state.reviews_data is not None:
                 st.write(f"**평균 평점:** {app_info.get('averageUserRating', 'N/A')} ⭐")
     
     if all_reviews:
-        st.markdown("---")
-        st.header("📊 분석 결과")
+        st.markdown("""
+        <div style="font-size:0.7rem; color:#6366f1; text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:0.3rem;">Analytics</div>
+        <div style="font-size:1.3rem; font-weight:700; color:#1e1b4b; margin-bottom:1.2rem;">📊 분석 결과</div>
+        """, unsafe_allow_html=True)
         
         # 전체 통계
         df_all = pd.DataFrame(all_reviews)
@@ -638,8 +877,7 @@ if st.session_state.reviews_data is not None:
             st.dataframe(df_filtered[available_columns], use_container_width=True, height=400)
             
             # 다운로드 버튼
-            st.markdown("---")
-            st.subheader("💾 데이터 다운로드")
+            st.markdown("<div style='font-size:1rem; font-weight:600; color:#4338ca; margin:1.2rem 0 0.6rem;'>💾 데이터 다운로드</div>", unsafe_allow_html=True)
             
             col1, col2, col3 = st.columns(3)
             
@@ -697,111 +935,102 @@ if st.session_state.reviews_data is not None:
                     mime="application/json"
                 )
             
-            st.markdown("---")
-            st.write("**🤖 AI 데이터 분석**")
-            st.info("💡 CSV 파일을 다운로드한 후, 각 AI 서비스 웹사이트에서 파일을 업로드하여 분석하세요.")
+            st.markdown("<div style='font-size:1rem; font-weight:600; color:#4338ca; margin:1.2rem 0 0.4rem;'>🤖 AI로 분석하기</div>", unsafe_allow_html=True)
+            st.markdown("<div style='font-size:0.83rem; color:#6b7280; margin-bottom:0.8rem;'>CSV 파일을 다운로드한 후 아래 AI 서비스에 업로드하여 심층 분석하세요.</div>", unsafe_allow_html=True)
             
-            col_ai1, col_ai2 = st.columns(2)
-            
-            with col_ai1:
-                st.markdown(f"""
-                <a href="https://chat.openai.com" target="_blank">
-                    <button style="
-                        background-color: #10a37f;
-                        color: white;
-                        padding: 0.5rem 1rem;
-                        border: none;
-                        border-radius: 0.25rem;
-                        cursor: pointer;
-                        font-size: 1rem;
-                        width: 100%;
-                        text-decoration: none;
-                        display: inline-block;
-                    ">🔵 ChatGPT 열기</button>
+            st.markdown("""
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem;">
+                <a href="https://chat.openai.com" target="_blank" style="text-decoration:none;">
+                    <div style="
+                        background:#fff; border:1px solid #e0e7ff; border-radius:12px;
+                        padding:1rem 1.2rem; display:flex; align-items:center; gap:0.8rem;
+                        transition:box-shadow 0.2s; cursor:pointer;
+                    ">
+                        <div style="font-size:1.5rem;">🤖</div>
+                        <div>
+                            <div style="font-weight:600; color:#1e1b4b; font-size:0.9rem;">ChatGPT로 분석</div>
+                            <div style="font-size:0.75rem; color:#6b7280;">CSV 업로드 후 분석</div>
+                        </div>
+                    </div>
                 </a>
-                """, unsafe_allow_html=True)
-                st.caption("1. 위 버튼을 클릭하여 ChatGPT 웹사이트를 엽니다\n2. CSV 파일을 업로드하거나 붙여넣기하여 분석하세요")
-            
-            with col_ai2:
-                st.markdown(f"""
-                <a href="https://gemini.google.com" target="_blank">
-                    <button style="
-                        background-color: #4285f4;
-                        color: white;
-                        padding: 0.5rem 1rem;
-                        border: none;
-                        border-radius: 0.25rem;
-                        cursor: pointer;
-                        font-size: 1rem;
-                        width: 100%;
-                        text-decoration: none;
-                        display: inline-block;
-                    ">🟢 Gemini 열기</button>
+                <a href="https://gemini.google.com" target="_blank" style="text-decoration:none;">
+                    <div style="
+                        background:#fff; border:1px solid #e0e7ff; border-radius:12px;
+                        padding:1rem 1.2rem; display:flex; align-items:center; gap:0.8rem;
+                        transition:box-shadow 0.2s; cursor:pointer;
+                    ">
+                        <div style="font-size:1.5rem;">✨</div>
+                        <div>
+                            <div style="font-weight:600; color:#1e1b4b; font-size:0.9rem;">Gemini로 분석</div>
+                            <div style="font-size:0.75rem; color:#6b7280;">CSV 업로드 후 분석</div>
+                        </div>
+                    </div>
                 </a>
-                """, unsafe_allow_html=True)
-                st.caption("1. 위 버튼을 클릭하여 Gemini 웹사이트를 엽니다\n2. CSV 파일을 업로드하거나 붙여넣기하여 분석하세요")
+            </div>
+            """, unsafe_allow_html=True)
         else:
             st.error("❌ 수집된 리뷰가 없습니다. 앱 ID를 확인하거나 나중에 다시 시도해주세요.")
 elif st.session_state.reviews_data is None:
     # 초기 화면
-    st.info("👈 왼쪽 사이드바에서 앱 ID를 입력하고 '분석 시작' 버튼을 클릭하세요.")
-    
-    st.markdown("---")
-    st.subheader("📖 사용 방법")
-    
     st.markdown("""
-    1. **앱 ID 찾기**: 
-       - 앱스토어에서 앱 페이지를 열고 URL에서 ID를 찾으세요
-       - 예: `https://apps.apple.com/app/id1510564828` → ID는 `1510564828`
-    
-    2. **분석 설정**:
-       - 분석할 국가를 선택하세요 (최대 2개까지 비교분석 가능)
-       - 최대 페이지 수를 설정하세요 (각 페이지당 최대 50개 리뷰)
-    
-    3. **분석 시작**:
-       - '분석 시작' 버튼을 클릭하면 리뷰를 수집하고 분석합니다
-    
-    4. **결과 확인 및 다운로드**:
-       - 분석 결과를 확인하고 Excel, CSV, JSON 형식으로 다운로드하세요
-    """)
-    
-    st.markdown("---")
-    st.subheader("💡 예시")
-    st.code("앱 ID: 1510564828 (Murmur - Voice Diary)", language="text")
-
-# 약관 및 개인정보처리방침 링크
-st.markdown("---")
-st.markdown("---")
-
-# 하단 푸터 영역
-footer_col1, footer_col2, footer_col3 = st.columns([2, 1, 1])
-
-with footer_col1:
-    # 개인정보처리방침 버튼 (st.page_link 사용 - Streamlit 1.31.0+)
-    try:
-        st.page_link("pages/1_privacy_policy.py", label="🔒 개인정보처리방침", icon=None)
-    except:
-        # 구버전 호환성을 위한 폴백
-        st.markdown(
-            """
-            <div style='text-align: left; padding: 5px 0;'>
-                <a href='/1_privacy_policy' class='privacy-button' onclick='window.location.href="/1_privacy_policy"; return false;'>🔒 개인정보처리방침</a>
+    <div style="
+        background:#fff; border-radius:14px; padding:1.5rem 2rem;
+        border:1px solid #e0e7ff; box-shadow:0 2px 8px rgba(99,102,241,0.06);
+        margin-bottom:1.2rem;
+    ">
+        <div style="font-size:1rem; font-weight:600; color:#4338ca; margin-bottom:1rem;">🚀 시작하는 방법</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+            <div style="display:flex; gap:0.8rem; align-items:flex-start;">
+                <div style="background:#eef2ff; color:#6366f1; border-radius:8px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;">1</div>
+                <div>
+                    <div style="font-weight:600; color:#1e1b4b; margin-bottom:0.2rem;">앱 ID 입력</div>
+                    <div style="font-size:0.82rem; color:#6b7280;">앱스토어 URL에서 ID를 복사하세요<br><span style="color:#6366f1;">apps.apple.com/app/id<b>1510564828</b></span></div>
+                </div>
             </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-with footer_col2:
-    pass
-
-with footer_col3:
-    st.markdown(
-        """
-        <div style='text-align: right; color: #666; padding: 5px 0; font-size: 0.85em;'>
-            <p style='margin-bottom: 0.3em;'><strong>Developer:</strong> Chang Dong Wook</p>
-            <p><strong>Email:</strong> <a href='mailto:okdongzang@gmail.com' style='color: #666;'>okdongzang@gmail.com</a></p>
+            <div style="display:flex; gap:0.8rem; align-items:flex-start;">
+                <div style="background:#eef2ff; color:#6366f1; border-radius:8px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;">2</div>
+                <div>
+                    <div style="font-weight:600; color:#1e1b4b; margin-bottom:0.2rem;">국가 및 기간 선택</div>
+                    <div style="font-size:0.82rem; color:#6b7280;">최대 2개 국가 비교 분석, 페이지당 최대 50개 리뷰 수집</div>
+                </div>
+            </div>
+            <div style="display:flex; gap:0.8rem; align-items:flex-start;">
+                <div style="background:#eef2ff; color:#6366f1; border-radius:8px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;">3</div>
+                <div>
+                    <div style="font-weight:600; color:#1e1b4b; margin-bottom:0.2rem;">분석 시작</div>
+                    <div style="font-size:0.82rem; color:#6b7280;">왼쪽 사이드바 하단의 <b>분석 시작</b> 버튼을 클릭하세요</div>
+                </div>
+            </div>
+            <div style="display:flex; gap:0.8rem; align-items:flex-start;">
+                <div style="background:#eef2ff; color:#6366f1; border-radius:8px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;">4</div>
+                <div>
+                    <div style="font-weight:600; color:#1e1b4b; margin-bottom:0.2rem;">결과 다운로드</div>
+                    <div style="font-size:0.82rem; color:#6b7280;">Excel · CSV · JSON 형식으로 내보내거나 AI로 분석하세요</div>
+                </div>
+            </div>
         </div>
-        """,
-        unsafe_allow_html=True
-    )
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("""
+<div style="
+    margin-top: 2rem;
+    padding: 1rem 1.5rem;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e0e7ff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+">
+    <div style="display:flex; gap:1.2rem; align-items:center;">
+        <a href='/1_privacy_policy' style="font-size:0.8rem; color:#6366f1; text-decoration:none; font-weight:500;">🔒 개인정보처리방침</a>
+        <a href='/2_terms_of_service' style="font-size:0.8rem; color:#6366f1; text-decoration:none; font-weight:500;">📋 서비스 이용약관</a>
+    </div>
+    <div style="font-size:0.78rem; color:#9ca3af;">
+        Developer: Chang Dong Wook &nbsp;·&nbsp;
+        <a href='mailto:okdongzang@gmail.com' style="color:#9ca3af;">okdongzang@gmail.com</a>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
