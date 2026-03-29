@@ -1064,7 +1064,7 @@ elif st.session_state.reviews_data is None:
                 <div style="background:#eef2ff; color:#6366f1; border-radius:8px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;">1</div>
                 <div>
                     <div style="font-weight:600; color:#1e1b4b; margin-bottom:0.2rem;">앱 ID 입력</div>
-                    <div style="font-size:0.82rem; color:#6b7280;">앱스토어 URL에서 ID를 복사하세요<br><span style="color:#6366f1;">apps.apple.com/app/id<b>1510564828</b></span></div>
+                    <div style="font-size:0.82rem; color:#1e1b4b;">앱스토어 URL에서 ID를 복사하세요<br><span style="color:#6366f1;">apps.apple.com/app/id<b>1510564828</b></span></div>
                 </div>
             </div>
             <div style="display:flex; gap:0.8rem; align-items:flex-start;">
@@ -1078,14 +1078,14 @@ elif st.session_state.reviews_data is None:
                 <div style="background:#eef2ff; color:#6366f1; border-radius:8px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;">3</div>
                 <div>
                     <div style="font-weight:600; color:#1e1b4b; margin-bottom:0.2rem;">분석 시작</div>
-                    <div style="font-size:0.82rem; color:#6b7280;">왼쪽 사이드바 하단의 <b>분석 시작</b> 버튼을 클릭하세요</div>
+                    <div style="font-size:0.82rem; color:#1e1b4b;">왼쪽 사이드바 하단의 <b>분석 시작</b> 버튼을 클릭하세요</div>
                 </div>
             </div>
             <div style="display:flex; gap:0.8rem; align-items:flex-start;">
                 <div style="background:#eef2ff; color:#6366f1; border-radius:8px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;">4</div>
                 <div>
                     <div style="font-weight:600; color:#1e1b4b; margin-bottom:0.2rem;">결과 다운로드</div>
-                    <div style="font-size:0.82rem; color:#6b7280;">Excel · CSV · JSON 형식으로 내보내거나 AI로 분석하세요</div>
+                    <div style="font-size:0.82rem; color:#1e1b4b;">Excel · CSV · JSON 형식으로 내보내거나 AI로 분석하세요</div>
                 </div>
             </div>
         </div>
@@ -1105,8 +1105,8 @@ st.markdown("""
     align-items: center;
 ">
     <div style="display:flex; gap:1.2rem; align-items:center;">
-        <a href='/1_privacy_policy' style="font-size:0.8rem; color:#6366f1; text-decoration:none; font-weight:500;">🔒 개인정보처리방침</a>
-        <a href='/2_terms_of_service' style="font-size:0.8rem; color:#6366f1; text-decoration:none; font-weight:500;">📋 서비스 이용약관</a>
+        <a href='/1_privacy_policy' style="font-size:0.8rem; color:#6366f1; text-decoration:none; font-weight:500;">개인정보처리방침</a>
+        <a href='/2_terms_of_service' style="font-size:0.8rem; color:#6366f1; text-decoration:none; font-weight:500;">서비스 이용약관</a>
     </div>
     <div style="font-size:0.78rem; color:#9ca3af;">
         Developer: Chang Dong Wook &nbsp;·&nbsp;
