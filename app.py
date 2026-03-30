@@ -356,6 +356,57 @@ if 'app_id' not in st.session_state:
 if 'app_info' not in st.session_state:
     st.session_state.app_info = None
 
+def fetch_reviews_play_store(app_id, country='us', count=200, start_year=None, end_year=None):
+    """
+    google-play-scraper를 사용하여 Play Store 리뷰를 수집합니다.
+    """
+    try:
+        from google_play_scraper import reviews as gp_reviews, Sort
+    except ImportError:
+        st.error("google-play-scraper 라이브러리가 필요합니다. requirements.txt를 확인하세요.")
+        return []
+
+    lang_map = {
+        'us': 'en', 'gb': 'en', 'ca': 'en', 'au': 'en',
+        'kr': 'ko', 'jp': 'ja', 'cn': 'zh', 'tw': 'zh', 'hk': 'zh',
+        'de': 'de', 'fr': 'fr', 'it': 'it', 'es': 'es', 'br': 'pt',
+        'ru': 'ru', 'nl': 'nl', 'se': 'sv', 'pl': 'pl', 'tr': 'tr',
+        'th': 'th', 'id': 'id', 'vn': 'vi', 'in': 'hi',
+        'sa': 'ar', 'ae': 'ar', 'sg': 'en', 'ph': 'en', 'my': 'en',
+    }
+    lang = lang_map.get(country.lower(), 'en')
+
+    try:
+        result, _ = gp_reviews(
+            app_id,
+            lang=lang,
+            country=country.lower(),
+            sort=Sort.NEWEST,
+            count=count,
+        )
+    except Exception as e:
+        st.warning(f"Play Store 리뷰 수집 오류 ({country}): {e}")
+        return []
+
+    reviews_list = []
+    for r in result:
+        date = r.get('at')
+        if date:
+            if start_year and date.year < start_year:
+                continue
+            if end_year and date.year > end_year:
+                continue
+        reviews_list.append({
+            'title': '',
+            'review': r.get('content', ''),
+            'rating': r.get('score', 0),
+            'date': date.strftime('%Y-%m-%dT%H:%M:%S') if date else '',
+            'country': country.upper(),
+            'author': r.get('userName', ''),
+        })
+    return reviews_list
+
+
 def fetch_reviews_rss(app_id, country='us', max_pages=10, start_year=None, end_year=None):
     """
     iTunes RSS API를 사용하여 리뷰 데이터를 수집합니다.
@@ -505,9 +556,9 @@ st.markdown("""
     gap: 1rem;
 ">
     <div>
-        <div style="color:rgba(255,255,255,0.2); font-size:0.8rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.3rem;">App Store Analytics</div>
+        <div style="color:rgba(255,255,255,0.2); font-size:0.8rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.3rem;">App Store &amp; Play Store Analytics</div>
         <div style="color:#fff; font-size:1.5rem; font-weight:700; margin:0;">📱 리뷰 분석 대시보드</div>
-        <div style="color:rgba(255,255,255,0.2); font-size:0.85rem; margin-top:0.3rem;">앱스토어 리뷰를 수집하고 인사이트를 발견하세요</div>
+        <div style="color:rgba(255,255,255,0.2); font-size:0.85rem; margin-top:0.3rem;">앱스토어·플레이스토어 리뷰를 수집하고 인사이트를 발견하세요</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -590,11 +641,24 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
-    app_id_input = st.text_input(
-        "앱 ID",
-        value="1510564828",
-        help="앱스토어에서 앱의 ID를 입력하세요. (예: 1510564828)"
+    store_choice = st.radio(
+        "스토어 선택",
+        options=["App Store", "Play Store"],
+        horizontal=True,
     )
+
+    if store_choice == "App Store":
+        app_id_input = st.text_input(
+            "앱 ID",
+            value="1510564828",
+            help="App Store 앱 ID (숫자). 예: 1510564828",
+        )
+    else:
+        app_id_input = st.text_input(
+            "패키지명",
+            value="com.kakao.talk",
+            help="Play Store 패키지명. 예: com.kakao.talk",
+        )
     
     st.markdown("---")
     
@@ -644,8 +708,14 @@ with st.sidebar:
         help="분석할 국가를 선택하세요. '전체 국가'를 선택하면 모든 국가의 리뷰를 수집합니다."
     )
     
-    max_pages = st.slider("최대 페이지 수", min_value=1, max_value=20, value=10, 
-                          help="각 페이지당 최대 50개의 리뷰를 가져옵니다")
+    if store_choice == "App Store":
+        max_pages = st.slider("최대 페이지 수", min_value=1, max_value=20, value=10,
+                              help="각 페이지당 최대 50개의 리뷰를 가져옵니다")
+        gp_count = 200  # 미사용
+    else:
+        gp_count = st.slider("최대 리뷰 수", min_value=50, max_value=500, value=200, step=50,
+                             help="국가당 수집할 최대 리뷰 수")
+        max_pages = 10  # 미사용
     
     st.markdown("### 📅 기간 설정")
     current_year = datetime.now().year
@@ -690,32 +760,39 @@ if 'app_id' not in st.session_state:
 
 # 메인 영역
 if analyze_button:
-    if not app_id_input or not app_id_input.isdigit():
-        st.error("올바른 앱 ID를 입력해주세요.")
+    is_play_store = (store_choice == "Play Store")
+
+    # 입력값 검증
+    if not app_id_input:
+        st.error("앱 ID 또는 패키지명을 입력해주세요.")
+    elif not is_play_store and not app_id_input.isdigit():
+        st.error("App Store ID는 숫자여야 합니다. (예: 1510564828)")
     else:
-        app_id = int(app_id_input)
-        st.session_state.app_id = app_id
-        
-        # 앱 정보 가져오기
-        with st.spinner("앱 정보를 불러오는 중..."):
-            app_info = get_app_info(app_id)
-            st.session_state.app_info = app_info
-        
-        if app_info:
-            st.success(f"✅ 앱 정보를 찾았습니다: **{app_info.get('trackName', 'Unknown')}**")
-            if 'artworkUrl100' in app_info:
-                col1, col2 = st.columns([1, 3])
-                with col1:
-                    st.image(app_info['artworkUrl100'], width=100)
-                with col2:
-                    st.write(f"**개발자:** {app_info.get('artistName', 'N/A')}")
-                    st.write(f"**카테고리:** {app_info.get('primaryGenreName', 'N/A')}")
-                    st.write(f"**평균 평점:** {app_info.get('averageUserRating', 'N/A')} ⭐")
+        st.session_state.app_id = app_id_input
+        st.session_state.app_info = None
+
+        if not is_play_store:
+            app_id_int = int(app_id_input)
+            with st.spinner("앱 정보를 불러오는 중..."):
+                app_info = get_app_info(app_id_int)
+                st.session_state.app_info = app_info
+            if app_info:
+                st.success(f"✅ 앱 정보를 찾았습니다: **{app_info.get('trackName', 'Unknown')}**")
+                if 'artworkUrl100' in app_info:
+                    col1, col2 = st.columns([1, 3])
+                    with col1:
+                        st.image(app_info['artworkUrl100'], width=100)
+                    with col2:
+                        st.write(f"**개발자:** {app_info.get('artistName', 'N/A')}")
+                        st.write(f"**카테고리:** {app_info.get('primaryGenreName', 'N/A')}")
+                        st.write(f"**평균 평점:** {app_info.get('averageUserRating', 'N/A')} ⭐")
+            else:
+                st.warning("⚠️ 앱 정보를 찾을 수 없지만, 리뷰 수집을 계속 진행합니다.")
         else:
-            st.warning("⚠️ 앱 정보를 찾을 수 없지만, 리뷰 수집을 계속 진행합니다.")
-        
+            st.info(f"🤖 Play Store 앱: `{app_id_input}`")
+
         st.markdown("---")
-        
+
         # 국가 선택 확인
         if not selected_countries:
             st.error("⚠️ 분석할 국가를 최소 1개 이상 선택해주세요.")
@@ -734,38 +811,44 @@ if analyze_button:
 
             # 리뷰 수집
             all_reviews = []
-            country_dataframes = {}  # 국가별 DataFrame 저장
-            
-            # '전체 국가'가 선택되었는지 확인
+            country_dataframes = {}
+
             if 'ALL' in selected_countries:
-                # 전체 국가 선택 시 모든 국가 수집 (ALL 제외)
                 countries_to_fetch = [key for key in country_options.keys() if key != 'ALL']
             else:
                 countries_to_fetch = selected_countries
-            
+
             progress_bar = st.progress(0)
             status_text = st.empty()
-            
+
             total_countries = len(countries_to_fetch)
             for idx, country_key in enumerate(countries_to_fetch):
                 country_info = country_options[country_key]
                 country_code = country_info['code']
                 country_name = country_info['name']
-                
+
                 status_text.text(f"{country_name} 리뷰 수집 중... ({start_year}년 ~ {end_year}년)")
-                reviews = fetch_reviews_rss(app_id, country_code, max_pages, start_year, end_year)
-                
-                if reviews:
-                    df_country = pd.DataFrame(reviews)
+
+                if is_play_store:
+                    fetched = fetch_reviews_play_store(
+                        app_id_input, country_code, gp_count, start_year, end_year
+                    )
+                else:
+                    fetched = fetch_reviews_rss(
+                        int(app_id_input), country_code, max_pages, start_year, end_year
+                    )
+
+                if fetched:
+                    df_country = pd.DataFrame(fetched)
                     if 'date' in df_country.columns:
                         df_country['date'] = pd.to_datetime(df_country['date'], errors='coerce')
                     country_dataframes[country_key] = df_country
-                    all_reviews.extend(reviews)
-                    st.success(f"✅ {country_name} 리뷰 {len(reviews)}개 수집 완료")
+                    all_reviews.extend(fetched)
+                    st.success(f"✅ {country_name} 리뷰 {len(fetched)}개 수집 완료")
                 else:
                     st.warning(f"⚠️ {country_name} 리뷰를 찾을 수 없습니다.")
-                    country_dataframes[country_key] = pd.DataFrame()  # 빈 DataFrame
-                
+                    country_dataframes[country_key] = pd.DataFrame()
+
                 progress_bar.progress(int((idx + 1) / total_countries * 100))
             
             status_text.empty()
