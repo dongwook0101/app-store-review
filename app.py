@@ -380,7 +380,7 @@ def fetch_reviews_play_store(app_id, country='us', count=200, start_year=None, e
     reviews_list = []
     continuation_token = None
     batch_size = 200
-    max_total = 2000  # 무한루프 방지
+    max_total = 5000  # 무한루프 방지
 
     while len(reviews_list) < max_total:
         try:
@@ -734,8 +734,8 @@ with st.sidebar:
                               help="각 페이지당 최대 50개의 리뷰를 가져옵니다")
         gp_count = 200  # 미사용
     else:
-        gp_count = st.slider("최대 리뷰 수", min_value=50, max_value=500, value=200, step=50,
-                             help="국가당 수집할 최대 리뷰 수")
+        gp_count = st.slider("최대 리뷰 수", min_value=50, max_value=5000, value=200, step=50,
+                             help="국가당 수집할 최대 리뷰 수 (많을수록 수집 시간이 길어집니다)")
         max_pages = 10  # 미사용
     
     st.markdown("### 📅 기간 설정")
@@ -1169,6 +1169,9 @@ if st.session_state.reviews_data is not None:
                 country_options[ck]['name']: country_dataframes[ck]['rating'].value_counts().sort_index()
                 for ck in available_countries if 'rating' in country_dataframes[ck].columns
             }).fillna(0)
+            # x축: 1점~5점, 각 점수마다 국가별 bar
+            pivot_rating_dist.index = pivot_rating_dist.index.astype(int)
+            pivot_rating_dist = pivot_rating_dist.reindex([1, 2, 3, 4, 5], fill_value=0)
             pivot_rating_dist.index = pivot_rating_dist.index.astype(str) + '점'
             st.bar_chart(pivot_rating_dist)
 
