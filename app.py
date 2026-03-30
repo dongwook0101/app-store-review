@@ -52,7 +52,7 @@ section[data-testid="stSidebar"] .stTextInput input,
 section[data-testid="stSidebar"] .stSelectbox select {
     background-color: rgba(255,255,255,0.08) !important;
     border: 1px solid rgba(255,255,255,0.15) !important;
-    color: #e0e7ff !important;
+    color: #000000 !important;
     border-radius: 8px !important;
 }
 section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="select"] > div {
