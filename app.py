@@ -359,6 +359,7 @@ if 'app_info' not in st.session_state:
 def fetch_reviews_play_store(app_id, country='us', count=200, start_year=None, end_year=None):
     """
     google-play-scraper를 사용하여 Play Store 리뷰를 수집합니다.
+    continuation_token으로 페이지네이션하며 start_year 이전 도달 시 중단합니다.
     """
     try:
         from google_play_scraper import reviews as gp_reviews, Sort
@@ -376,34 +377,54 @@ def fetch_reviews_play_store(app_id, country='us', count=200, start_year=None, e
     }
     lang = lang_map.get(country.lower(), 'en')
 
-    try:
-        result, _ = gp_reviews(
-            app_id,
-            lang=lang,
-            country=country.lower(),
-            sort=Sort.NEWEST,
-            count=count,
-        )
-    except Exception as e:
-        st.warning(f"Play Store 리뷰 수집 오류 ({country}): {e}")
-        return []
-
     reviews_list = []
-    for r in result:
-        date = r.get('at')
-        if date:
-            if start_year and date.year < start_year:
-                continue
-            if end_year and date.year > end_year:
-                continue
-        reviews_list.append({
-            'title': '',
-            'review': r.get('content', ''),
-            'rating': r.get('score', 0),
-            'date': date.strftime('%Y-%m-%dT%H:%M:%S') if date else '',
-            'country': country.upper(),
-            'author': r.get('userName', ''),
-        })
+    continuation_token = None
+    batch_size = 200
+    max_total = 2000  # 무한루프 방지
+
+    while len(reviews_list) < max_total:
+        try:
+            result, continuation_token = gp_reviews(
+                app_id,
+                lang=lang,
+                country=country.lower(),
+                sort=Sort.NEWEST,
+                count=batch_size,
+                continuation_token=continuation_token,
+            )
+        except Exception as e:
+            st.warning(f"Play Store 리뷰 수집 오류 ({country}): {e}")
+            break
+
+        if not result:
+            break
+
+        reached_start = False
+        for r in result:
+            date = r.get('at')
+            if date:
+                if end_year and date.year > end_year:
+                    continue
+                if start_year and date.year < start_year:
+                    reached_start = True
+                    continue
+            reviews_list.append({
+                'title': '',
+                'review': r.get('content', ''),
+                'rating': r.get('score', 0),
+                'date': date.strftime('%Y-%m-%dT%H:%M:%S') if date else '',
+                'country': country.upper(),
+                'author': r.get('userName', ''),
+            })
+
+        # start_year 이전 데이터에 도달했거나 더 이상 토큰 없으면 중단
+        if reached_start or continuation_token is None:
+            break
+
+        # count 제한에 도달
+        if len(reviews_list) >= count:
+            break
+
     return reviews_list
 
 
