@@ -908,9 +908,9 @@ if st.session_state.reviews_data is not None:
         # 전체 통계
         df_all = pd.DataFrame(all_reviews)
         if 'date' in df_all.columns:
-            df_all['date'] = pd.to_datetime(df_all['date'], errors='coerce')
-            # 년도 컬럼 추가
-            df_all['year'] = df_all['date'].dt.year
+            df_all['date'] = pd.to_datetime(df_all['date'], errors='coerce', utc=True).dt.tz_localize(None)
+            # 년도 컬럼 추가 (int로 저장)
+            df_all['year'] = df_all['date'].dt.year.astype('Int64')
         
         # 통계 메트릭
             col1, col2, col3, col4 = st.columns(4)
@@ -990,16 +990,24 @@ if st.session_state.reviews_data is not None:
                     
                     # 년도별 차트
                     col1, col2 = st.columns(2)
-                    
+
                     with col1:
                         st.write("**년도별 리뷰 수 추이**")
-                        year_counts = year_stats['리뷰 수']
-                        st.line_chart(year_counts)
-                    
+                        year_counts = year_stats['리뷰 수'].copy()
+                        year_counts.index = year_counts.index.astype(str)
+                        if len(year_counts) == 1:
+                            st.bar_chart(year_counts)
+                        else:
+                            st.line_chart(year_counts)
+
                     with col2:
                         st.write("**년도별 평균 평점 추이**")
-                        year_ratings = year_stats['평균 평점']
-                        st.line_chart(year_ratings)
+                        year_ratings = year_stats['평균 평점'].copy()
+                        year_ratings.index = year_ratings.index.astype(str)
+                        if len(year_ratings) == 1:
+                            st.bar_chart(year_ratings)
+                        else:
+                            st.line_chart(year_ratings)
                     
                     # 년도별 상세 분석 (국가별)
                     if 'country' in df_year.columns:
@@ -1026,14 +1034,22 @@ if st.session_state.reviews_data is not None:
                         ).fillna(0)
                         
                         col1, col2 = st.columns(2)
-                        
+
                         with col1:
                             st.write("**년도별 국가별 리뷰 수**")
-                            st.line_chart(pivot_counts)
-                        
+                            pivot_counts.index = pivot_counts.index.astype(str)
+                            if len(pivot_counts) == 1:
+                                st.bar_chart(pivot_counts)
+                            else:
+                                st.line_chart(pivot_counts)
+
                         with col2:
                             st.write("**년도별 국가별 평균 평점**")
-                            st.line_chart(pivot_ratings)
+                            pivot_ratings.index = pivot_ratings.index.astype(str)
+                            if len(pivot_ratings) == 1:
+                                st.bar_chart(pivot_ratings)
+                            else:
+                                st.line_chart(pivot_ratings)
                 
                 else:
                     st.info("년도 정보가 있는 리뷰가 없습니다.")
