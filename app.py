@@ -55,9 +55,12 @@ section[data-testid="stSidebar"] .stSelectbox select {
     color: #000000 !important;
     border-radius: 8px !important;
 }
-section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="select"] > div {
+section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="select"] > div,
+section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="select"] > div > div,
+section[data-testid="stSidebar"] .stMultiSelect div[class*="ValueContainer"],
+section[data-testid="stSidebar"] .stMultiSelect div[class*="control"] {
     background-color: transparent !important;
-    border: 1px solid rgba(255,255,255,0.15) !important;
+    border-color: rgba(255,255,255,0.15) !important;
     border-radius: 8px !important;
 }
 section[data-testid="stSidebar"] .stSlider .stSlider {
