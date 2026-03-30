@@ -49,11 +49,15 @@ section[data-testid="stSidebar"] * {
     color: #e0e7ff !important;
 }
 section[data-testid="stSidebar"] .stTextInput input,
-section[data-testid="stSidebar"] .stSelectbox select,
-section[data-testid="stSidebar"] .stMultiSelect div {
+section[data-testid="stSidebar"] .stSelectbox select {
     background-color: rgba(255,255,255,0.08) !important;
     border: 1px solid rgba(255,255,255,0.15) !important;
     color: #fff !important;
+    border-radius: 8px !important;
+}
+section[data-testid="stSidebar"] .stMultiSelect [data-baseweb="select"] > div {
+    background-color: transparent !important;
+    border: 1px solid rgba(255,255,255,0.15) !important;
     border-radius: 8px !important;
 }
 section[data-testid="stSidebar"] .stSlider .stSlider {
@@ -227,7 +231,8 @@ hr {
 
 /* ── 사이드바 입력 필드 텍스트 색상 ── */
 section[data-testid="stSidebar"] input {
-    color: #ffffff !important;
+    color: #1e1b4b !important;
+    background-color: rgba(255,255,255,0.9) !important;
 }
 
 /* ── progress bar ── */
