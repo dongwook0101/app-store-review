@@ -901,26 +901,8 @@ if analyze_button:
                 except Exception:
                     pass
 
-# ── 헬퍼: 키워드 추출 ─────────────────────────────────────────────────────────
-def _extract_keywords(texts, top_n=5):
-    """단순 단어 빈도 기반 키워드 추출 (불용어 제거)."""
-    import re
-    from collections import Counter
-    stopwords = {
-        '이', '가', '을', '를', '은', '는', '에', '의', '도', '로', '과', '와', '하', '한',
-        '합니다', '있습니다', '없습니다', '합니다', '했습니다', '됩니다', '같아요', '같습니다',
-        '그', '이거', '저', '제', '수', '것', '좀', '더', '너무', '진짜', '정말', '아주',
-        'the', 'a', 'an', 'is', 'it', 'to', 'and', 'of', 'in', 'for', 'this', 'that',
-        'not', 'but', 'with', 'have', 'has', 'are', 'was', 'be', 'app', 'i', 'my',
-        '앱', '어플', '어플리케이션', '리뷰', '업데이트', '이후', '후', '부터',
-    }
-    words = []
-    for text in texts:
-        if not isinstance(text, str):
-            continue
-        tokens = re.findall(r'[가-힣]{2,}|[a-zA-Z]{3,}', text.lower())
-        words.extend([w for w in tokens if w not in stopwords])
-    return Counter(words).most_common(top_n)
+# ── 헬퍼: 키워드 추출 (keywords.py 위임) ────────────────────────────────────
+from keywords import extract_keywords as _extract_keywords
 
 
 # ── 헬퍼: 이슈 카테고리 분류 ──────────────────────────────────────────────────
@@ -1100,7 +1082,7 @@ if st.session_state.reviews_data is not None:
             st.markdown("**주요 불만 키워드 Top 5**")
             neg_texts = df_all[df_all['rating'] <= 2]['review'].tolist() if 'rating' in df_all.columns else review_texts
             if neg_texts:
-                neg_kw = _extract_keywords(neg_texts, 5)
+                neg_kw = _extract_keywords(neg_texts, 5, mode='neg')
                 if neg_kw:
                     for i, (word, cnt) in enumerate(neg_kw, 1):
                         st.markdown(f"""
@@ -1120,7 +1102,7 @@ if st.session_state.reviews_data is not None:
             st.markdown("**주요 만족 키워드 Top 5**")
             pos_texts = df_all[df_all['rating'] >= 4]['review'].tolist() if 'rating' in df_all.columns else review_texts
             if pos_texts:
-                pos_kw = _extract_keywords(pos_texts, 5)
+                pos_kw = _extract_keywords(pos_texts, 5, mode='pos')
                 if pos_kw:
                     for i, (word, cnt) in enumerate(pos_kw, 1):
                         st.markdown(f"""
