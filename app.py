@@ -885,7 +885,8 @@ if analyze_button:
                     'all_reviews': all_reviews,
                     'country_dataframes': country_dataframes,
                     'selected_countries': selected_countries,
-                    'country_options': country_options
+                    'country_options': country_options,
+                    'store': store_choice,
                 }
                 # DB: 분석 완료 이벤트
                 try:
@@ -900,318 +901,407 @@ if analyze_button:
                 except Exception:
                     pass
 
+# ── 헬퍼: 키워드 추출 ─────────────────────────────────────────────────────────
+def _extract_keywords(texts, top_n=5):
+    """단순 단어 빈도 기반 키워드 추출 (불용어 제거)."""
+    import re
+    from collections import Counter
+    stopwords = {
+        '이', '가', '을', '를', '은', '는', '에', '의', '도', '로', '과', '와', '하', '한',
+        '합니다', '있습니다', '없습니다', '합니다', '했습니다', '됩니다', '같아요', '같습니다',
+        '그', '이거', '저', '제', '수', '것', '좀', '더', '너무', '진짜', '정말', '아주',
+        'the', 'a', 'an', 'is', 'it', 'to', 'and', 'of', 'in', 'for', 'this', 'that',
+        'not', 'but', 'with', 'have', 'has', 'are', 'was', 'be', 'app', 'i', 'my',
+        '앱', '어플', '어플리케이션', '리뷰', '업데이트', '이후', '후', '부터',
+    }
+    words = []
+    for text in texts:
+        if not isinstance(text, str):
+            continue
+        tokens = re.findall(r'[가-힣]{2,}|[a-zA-Z]{3,}', text.lower())
+        words.extend([w for w in tokens if w not in stopwords])
+    return Counter(words).most_common(top_n)
+
+
+# ── 헬퍼: 이슈 카테고리 분류 ──────────────────────────────────────────────────
+def _classify_issue_categories(texts):
+    """키워드 매칭으로 이슈 카테고리 분류."""
+    categories = {
+        '로그인/계정':    ['로그인', '계정', '비밀번호', 'login', 'account', 'password', '인증', '탈퇴'],
+        '결제/구독':      ['결제', '구독', '환불', '요금', '유료', 'payment', 'subscription', 'refund', '과금'],
+        '성능/속도':      ['느려', '느림', '버벅', '로딩', '속도', 'slow', 'lag', 'loading', '렉', '렉걸'],
+        '크래시/안정성':  ['튕겨', '튕김', '오류', '에러', '다운', 'crash', 'error', 'bug', '꺼짐', '안됨'],
+        'UI/UX':          ['인터페이스', 'ui', 'ux', '디자인', '불편', '화면', '레이아웃', '버튼', '사용성'],
+        '광고':           ['광고', '팝업', 'ad', 'ads', '배너'],
+        '콘텐츠/기능':    ['기능', '콘텐츠', '업데이트', '추가', '삭제', 'feature', 'content', '없어진', '사라진'],
+        '고객지원':       ['고객센터', '지원', '답변', 'support', 'cs', '문의', '응답'],
+    }
+    counts = {k: 0 for k in categories}
+    for text in texts:
+        if not isinstance(text, str):
+            continue
+        t = text.lower()
+        for cat, keywords in categories.items():
+            if any(kw in t for kw in keywords):
+                counts[cat] += 1
+    # 기타
+    categorized = sum(counts.values())
+    counts['기타'] = max(0, len(texts) - categorized)
+    return {k: v for k, v in counts.items() if v > 0}
+
+
 # 분석 결과 표시 (세션 상태에 데이터가 있으면)
 if st.session_state.reviews_data is not None:
     all_reviews = st.session_state.reviews_data['all_reviews']
     country_dataframes = st.session_state.reviews_data['country_dataframes']
     selected_countries = st.session_state.reviews_data['selected_countries']
     country_options = st.session_state.reviews_data['country_options']
-    
-    # 앱 정보 표시
-    if st.session_state.app_info:
-        app_info = st.session_state.app_info
-        st.success(f"✅ 앱 정보: **{app_info.get('trackName', 'Unknown')}** (ID: {st.session_state.app_id})")
-        if 'artworkUrl100' in app_info:
-            col1, col2 = st.columns([1, 3])
-            with col1:
-                st.image(app_info['artworkUrl100'], width=100)
-            with col2:
-                st.write(f"**개발자:** {app_info.get('artistName', 'N/A')}")
-                st.write(f"**카테고리:** {app_info.get('primaryGenreName', 'N/A')}")
-                st.write(f"**평균 평점:** {app_info.get('averageUserRating', 'N/A')} ⭐")
-    
+
     if all_reviews:
-        st.markdown("""
-        <div style="font-size:0.7rem; color:#6366f1; text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:0.3rem;">Analytics</div>
-        <div style="font-size:1.3rem; font-weight:700; color:#1e1b4b; margin-bottom:1.2rem;">📊 분석 결과</div>
-        """, unsafe_allow_html=True)
-        
-        # 전체 통계
+        # ── 데이터 준비 ────────────────────────────────────────────────────────
         df_all = pd.DataFrame(all_reviews)
         if 'date' in df_all.columns:
             df_all['date'] = pd.to_datetime(df_all['date'], errors='coerce', utc=True).dt.tz_localize(None)
-            # 년도 컬럼 추가 (int로 저장)
             df_all['year'] = df_all['date'].dt.year.astype('Int64')
-        
-        # 통계 메트릭
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                st.metric("총 리뷰 수", len(df_all))
-            
-            if 'rating' in df_all.columns:
-                with col2:
-                    st.metric("평균 평점", f"{df_all['rating'].mean():.2f} ⭐")
-                
-                with col3:
-                    st.metric("최고 평점", f"{df_all['rating'].max()} ⭐")
-                
-                with col4:
-                    st.metric("최저 평점", f"{df_all['rating'].min()} ⭐")
-            
-            # 평점 분포
-            if 'rating' in df_all.columns:
-                st.subheader("📈 평점 분포")
-                rating_counts = df_all['rating'].value_counts().sort_index()
-                
-                col1, col2 = st.columns([2, 1])
-                
-                with col1:
-                    st.bar_chart(rating_counts)
-                
-                with col2:
-                    st.write("**평점별 리뷰 수**")
-                    for rating in sorted(rating_counts.index):
-                        count = rating_counts[rating]
-                        st.write(f"{'⭐' * rating} {rating}점: {count}개")
-            
-            # 국가별 비교
-            available_countries = [c for c in selected_countries if c in country_dataframes and len(country_dataframes[c]) > 0]
-            if len(available_countries) > 0:
-                st.subheader("🌍 국가별 비교")
-                
-                cols = st.columns(len(available_countries))
-                for idx, country_key in enumerate(available_countries):
-                    with cols[idx]:
-                        country_info = country_options[country_key]
-                        df_country = country_dataframes[country_key]
-                        st.write(f"**{country_info['name']}**")
-                        st.write(f"- 리뷰 수: {len(df_country)}")
-                        if 'rating' in df_country.columns:
-                            st.write(f"- 평균 평점: {df_country['rating'].mean():.2f} ⭐")
-            
-            # 년도별 분석
-            if 'year' in df_all.columns or 'date' in df_all.columns:
-                st.subheader("📅 년도별 분석")
-                
-                # 년도 정보가 있으면 분석
-                df_year = df_all.dropna(subset=['year'])
-                
-                if len(df_year) > 0:
-                    # 년도별 통계
-                    year_stats = df_year.groupby('year').agg({
-                        'rating': ['count', 'mean'],
-                    }).round(2)
-                    year_stats.columns = ['리뷰 수', '평균 평점']
-                    year_stats = year_stats.sort_index()
-                    
-                    col1, col2 = st.columns([2, 1])
-                    
-                    with col1:
-                        st.write("**년도별 리뷰 수 및 평균 평점**")
-                        st.dataframe(year_stats, use_container_width=True)
-                    
-                    with col2:
-                        st.write("**년도별 요약**")
-                        if len(year_stats) > 0:
-                            st.write(f"**분석 기간:** {int(year_stats.index.min())}년 ~ {int(year_stats.index.max())}년")
-                            st.write(f"**총 년도 수:** {len(year_stats)}년")
-                            max_year = year_stats['리뷰 수'].idxmax()
-                            st.write(f"**최다 리뷰 년도:** {int(max_year)}년 ({int(year_stats.loc[max_year, '리뷰 수'])}개)")
-                    
-                    # 년도별 차트
-                    col1, col2 = st.columns(2)
 
-                    with col1:
-                        st.write("**년도별 리뷰 수 추이**")
-                        year_counts = year_stats['리뷰 수'].copy()
-                        year_counts.index = year_counts.index.astype(str)
-                        if len(year_counts) == 1:
-                            st.bar_chart(year_counts)
-                        else:
-                            st.line_chart(year_counts)
+        # 수집 메타 정보
+        fetched_at = datetime.now().strftime('%Y-%m-%d %H:%M')
+        total_n = len(df_all)
+        _dates = df_all['date'].dropna() if 'date' in df_all.columns else pd.Series([], dtype='datetime64[ns]')
+        period_str = (
+            f"{_dates.min().strftime('%Y-%m-%d')} ~ {_dates.max().strftime('%Y-%m-%d')}"
+            if len(_dates) > 0 else "날짜 정보 없음"
+        )
+        platform_str = st.session_state.reviews_data.get('store', 'App Store')
+        app_name = (st.session_state.app_info or {}).get('trackName', '') or str(st.session_state.app_id)
 
-                    with col2:
-                        st.write("**년도별 평균 평점 추이**")
-                        year_ratings = year_stats['평균 평점'].copy()
-                        year_ratings.index = year_ratings.index.astype(str)
-                        if len(year_ratings) == 1:
-                            st.bar_chart(year_ratings)
-                        else:
-                            st.line_chart(year_ratings)
-                    
-                    # 년도별 상세 분석 (국가별)
-                    if 'country' in df_year.columns:
-                        st.write("**년도별 국가별 비교**")
-                        
-                        year_country_stats = df_year.groupby(['year', 'country']).agg({
-                            'rating': ['count', 'mean'],
-                        }).round(2)
-                        year_country_stats.columns = ['리뷰 수', '평균 평점']
-                        year_country_stats = year_country_stats.reset_index()
-                        
-                        # 피벗 테이블 생성
-                        pivot_counts = year_country_stats.pivot_table(
-                            index='year', 
-                            columns='country', 
-                            values='리뷰 수', 
-                            aggfunc='sum'
-                        ).fillna(0)
-                        pivot_ratings = year_country_stats.pivot_table(
-                            index='year', 
-                            columns='country', 
-                            values='평균 평점', 
-                            aggfunc='mean'
-                        ).fillna(0)
-                        
-                        col1, col2 = st.columns(2)
+        avg_rating = df_all['rating'].mean() if 'rating' in df_all.columns else None
+        neg_ratio = (
+            (df_all['rating'] <= 2).sum() / total_n * 100
+            if 'rating' in df_all.columns else None
+        )
 
-                        with col1:
-                            st.write("**년도별 국가별 리뷰 수**")
-                            pivot_counts.index = pivot_counts.index.astype(str)
-                            if len(pivot_counts) == 1:
-                                st.bar_chart(pivot_counts)
-                            else:
-                                st.line_chart(pivot_counts)
-
-                        with col2:
-                            st.write("**년도별 국가별 평균 평점**")
-                            pivot_ratings.index = pivot_ratings.index.astype(str)
-                            if len(pivot_ratings) == 1:
-                                st.bar_chart(pivot_ratings)
-                            else:
-                                st.line_chart(pivot_ratings)
-                
-                else:
-                    st.info("년도 정보가 있는 리뷰가 없습니다.")
-            
-            # 데이터 테이블
-            st.subheader("📋 리뷰 데이터")
-            
-            # 필터 옵션
-            col1, col2, col3 = st.columns(3)
-            
-            df_filtered = df_all.copy()
-            
-            with col1:
-                if 'rating' in df_all.columns:
-                    selected_ratings = st.multiselect(
-                        "평점 필터",
-                        options=sorted(df_all['rating'].unique()),
-                        default=sorted(df_all['rating'].unique())
-                    )
-                    df_filtered = df_filtered[df_filtered['rating'].isin(selected_ratings)]
-            
-            with col2:
-                if 'country' in df_all.columns:
-                    selected_countries = st.multiselect(
-                        "국가 필터",
-                        options=df_all['country'].unique(),
-                        default=df_all['country'].unique()
-                    )
-                    df_filtered = df_filtered[df_filtered['country'].isin(selected_countries)]
-            
-            with col3:
-                if 'year' in df_all.columns:
-                    available_years = sorted([int(y) for y in df_all['year'].dropna().unique()])
-                    if available_years:
-                        selected_years = st.multiselect(
-                            "년도 필터",
-                            options=available_years,
-                            default=available_years
-                        )
-                        if selected_years:
-                            df_filtered = df_filtered[df_filtered['year'].isin(selected_years)]
-            
-            # 테이블 표시
-            display_columns = ['country', 'rating', 'title', 'review', 'date']
-            available_columns = [col for col in display_columns if col in df_filtered.columns]
-            st.dataframe(df_filtered[available_columns], use_container_width=True, height=400)
-            
-            # 다운로드 버튼
-            st.markdown("<div style='font-size:1rem; font-weight:600; color:#4338ca; margin:1.2rem 0 0.6rem;'>💾 데이터 다운로드</div>", unsafe_allow_html=True)
-            
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                # Excel 다운로드
-                output = io.BytesIO()
-                
-                def remove_timezone(df):
-                    """datetime 컬럼에서 타임존 정보 제거 (Excel 호환)"""
-                    df_copy = df.copy()
-                    if 'date' in df_copy.columns:
-                        try:
-                            # 타임존이 있으면 제거 (tz_convert는 타임존이 있는 경우에만 작동)
-                            df_copy['date'] = df_copy['date'].dt.tz_convert(None)
-                        except (TypeError, AttributeError):
-                            # 타임존 정보가 없거나 이미 naive datetime인 경우 - 그대로 사용
-                            pass
-                    return df_copy
-                
-                with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    # 선택된 국가별로 시트 생성
-                    for country_key in selected_countries:
-                        if country_key in country_dataframes and len(country_dataframes[country_key]) > 0:
-                            df_country_export = remove_timezone(country_dataframes[country_key])
-                            sheet_name = f"{country_key}_Reviews"
-                            df_country_export.to_excel(writer, sheet_name=sheet_name, index=False)
-                    
-                    df_all_export = remove_timezone(df_all)
-                    df_all_export.to_excel(writer, sheet_name='All_Reviews', index=False)
-                
-                st.download_button(
-                    label="📊 Excel 파일 다운로드",
-                    data=output.getvalue(),
-                    file_name=f"reviews_{st.session_state.app_id}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-            
-            with col2:
-                # CSV 다운로드
-                csv = df_all.to_csv(index=False, encoding='utf-8-sig')
-                st.download_button(
-                    label="📄 CSV 파일 다운로드",
-                    data=csv,
-                    file_name=f"reviews_{st.session_state.app_id}.csv",
-                    mime="text/csv"
-                )
-            
-            with col3:
-                # JSON 다운로드
-                json_str = json.dumps(all_reviews, ensure_ascii=False, indent=2)
-                st.download_button(
-                    label="📋 JSON 파일 다운로드",
-                    data=json_str,
-                    file_name=f"reviews_{st.session_state.app_id}.json",
-                    mime="application/json"
-                )
-            
-            st.markdown("<div style='font-size:1rem; font-weight:600; color:#4338ca; margin:1.2rem 0 0.4rem;'>🤖 AI로 분석하기</div>", unsafe_allow_html=True)
-            st.markdown("<div style='font-size:0.83rem; color:#6b7280; margin-bottom:0.8rem;'>CSV 파일을 다운로드한 후 아래 AI 서비스에 업로드하여 심층 분석하세요.</div>", unsafe_allow_html=True)
-            
-            st.markdown("""
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem;">
-                <a href="https://chat.openai.com" target="_blank" style="text-decoration:none;">
-                    <div style="
-                        background:#fff; border:1px solid #e0e7ff; border-radius:12px;
-                        padding:1rem 1.2rem; display:flex; align-items:center; gap:0.8rem;
-                        transition:box-shadow 0.2s; cursor:pointer;
-                    ">
-                        <div style="font-size:1.5rem;">🤖</div>
-                        <div>
-                            <div style="font-weight:600; color:#1e1b4b; font-size:0.9rem;">ChatGPT로 분석</div>
-                            <div style="font-size:0.75rem; color:#6b7280;">CSV 업로드 후 분석</div>
-                        </div>
-                    </div>
-                </a>
-                <a href="https://gemini.google.com" target="_blank" style="text-decoration:none;">
-                    <div style="
-                        background:#fff; border:1px solid #e0e7ff; border-radius:12px;
-                        padding:1rem 1.2rem; display:flex; align-items:center; gap:0.8rem;
-                        transition:box-shadow 0.2s; cursor:pointer;
-                    ">
-                        <div style="font-size:1.5rem;">✨</div>
-                        <div>
-                            <div style="font-weight:600; color:#1e1b4b; font-size:0.9rem;">Gemini로 분석</div>
-                            <div style="font-size:0.75rem; color:#6b7280;">CSV 업로드 후 분석</div>
-                        </div>
-                    </div>
-                </a>
+        # ── 행 0: 데이터 기준 배너 ────────────────────────────────────────────
+        st.markdown(f"""
+        <div style="background:#fff;border:1px solid #e0e7ff;border-radius:14px;
+                    padding:1rem 1.5rem;margin-bottom:1.2rem;
+                    display:flex;flex-wrap:wrap;gap:1.2rem;align-items:center;">
+            <div style="flex:1;min-width:160px;">
+                <div style="font-size:0.7rem;color:#6b7280;text-transform:uppercase;
+                            letter-spacing:.08em;font-weight:600;">분석 기준</div>
+                <div style="font-size:1rem;font-weight:700;color:#1e1b4b;">
+                    현재 세션 최신 {total_n:,}개 리뷰 표본</div>
+                <div style="font-size:0.78rem;color:#6366f1;margin-top:2px;">
+                    스토어 전체 통계가 아닌 수집 표본 기준입니다</div>
             </div>
-            """, unsafe_allow_html=True)
+            <div style="display:flex;gap:1.5rem;flex-wrap:wrap;">
+                <div>
+                    <div style="font-size:0.68rem;color:#9ca3af;font-weight:600;">플랫폼</div>
+                    <div style="font-size:0.88rem;font-weight:600;color:#374151;">{platform_str}</div>
+                </div>
+                <div>
+                    <div style="font-size:0.68rem;color:#9ca3af;font-weight:600;">앱</div>
+                    <div style="font-size:0.88rem;font-weight:600;color:#374151;">{app_name}</div>
+                </div>
+                <div>
+                    <div style="font-size:0.68rem;color:#9ca3af;font-weight:600;">수집 기간</div>
+                    <div style="font-size:0.88rem;font-weight:600;color:#374151;">{period_str}</div>
+                </div>
+                <div>
+                    <div style="font-size:0.68rem;color:#9ca3af;font-weight:600;">수집 시각</div>
+                    <div style="font-size:0.88rem;font-weight:600;color:#374151;">{fetched_at}</div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # ── 행 1: 핵심 KPI ────────────────────────────────────────────────────
+        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+        kpi1.metric("수집 리뷰 수", f"{total_n:,}개")
+        if avg_rating is not None:
+            kpi2.metric("평균 평점", f"{avg_rating:.2f} ⭐")
+        if neg_ratio is not None:
+            kpi3.metric("부정 리뷰 비율", f"{neg_ratio:.1f}%",
+                        delta=None,
+                        help="1~2점 리뷰 비율")
+        kpi4.metric("수집 국가 수", f"{df_all['country'].nunique()}개국" if 'country' in df_all.columns else "-")
+
+        st.markdown("---")
+
+        # ── 행 2: 리뷰 건강도 ─────────────────────────────────────────────────
+        st.markdown("#### 📊 리뷰 건강도")
+
+        health_col1, health_col2 = st.columns([1, 1])
+
+        with health_col1:
+            if 'rating' in df_all.columns:
+                st.markdown("**평점 분포**")
+                rating_counts = df_all['rating'].value_counts().sort_index()
+                rating_df = pd.DataFrame({'평점': rating_counts.index.astype(str) + '점',
+                                          '리뷰 수': rating_counts.values})
+                st.bar_chart(rating_counts.rename(index=lambda x: f"{x}점"))
+
+        with health_col2:
+            st.markdown("**리뷰 건강도 진단**")
+            if 'rating' in df_all.columns:
+                rc = df_all['rating'].value_counts()
+                low = (rc.get(1, 0) + rc.get(2, 0))
+                high = (rc.get(4, 0) + rc.get(5, 0))
+                mid = rc.get(3, 0)
+                low_pct = low / total_n * 100
+                high_pct = high / total_n * 100
+
+                # 인사이트 카드 생성
+                insights = []
+                if low_pct >= 40:
+                    insights.append(("🔴", "1~2점 비중이 매우 높음", f"부정 리뷰가 {low_pct:.0f}%로 즉각 대응이 필요합니다."))
+                elif low_pct >= 20:
+                    insights.append(("🟠", "부정 리뷰 비중 주의", f"1~2점 리뷰가 {low_pct:.0f}%입니다."))
+                else:
+                    insights.append(("🟢", "부정 리뷰 비중 낮음", f"1~2점 리뷰가 {low_pct:.0f}%로 양호합니다."))
+
+                if high_pct >= 60:
+                    insights.append(("🟢", "긍정 리뷰 우세", f"4~5점 리뷰가 {high_pct:.0f}%입니다."))
+                elif high_pct <= 30:
+                    insights.append(("🔴", "긍정 리뷰 부족", f"4~5점 리뷰가 {high_pct:.0f}%에 불과합니다."))
+
+                # 최근 리뷰 트렌드 (날짜가 있으면)
+                if 'date' in df_all.columns and len(_dates) > 0:
+                    recent_cut = _dates.quantile(0.75)
+                    df_recent = df_all[df_all['date'] >= recent_cut]
+                    df_older = df_all[df_all['date'] < recent_cut]
+                    if len(df_recent) > 5 and len(df_older) > 5:
+                        r_avg = df_recent['rating'].mean()
+                        o_avg = df_older['rating'].mean()
+                        if r_avg < o_avg - 0.3:
+                            insights.append(("🔴", "최근 리뷰가 저평점에 편중", f"최근 리뷰 평균 {r_avg:.2f}점 vs 이전 {o_avg:.2f}점"))
+                        elif r_avg > o_avg + 0.3:
+                            insights.append(("🟢", "최근 리뷰 개선 추세", f"최근 리뷰 평균 {r_avg:.2f}점 vs 이전 {o_avg:.2f}점"))
+
+                for icon, title, desc in insights:
+                    st.markdown(f"""
+                    <div style="background:#f9fafb;border-left:4px solid #6366f1;
+                                border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:0.5rem;">
+                        <div style="font-weight:600;color:#1e1b4b;font-size:0.88rem;">{icon} {title}</div>
+                        <div style="font-size:0.78rem;color:#6b7280;margin-top:2px;">{desc}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        # ── 행 3: 핵심 VOC ────────────────────────────────────────────────────
+        st.markdown("#### 💬 핵심 VOC")
+
+        voc_col1, voc_col2, voc_col3 = st.columns(3)
+
+        review_texts = df_all['review'].tolist() if 'review' in df_all.columns else []
+
+        with voc_col1:
+            st.markdown("**주요 불만 키워드 Top 5**")
+            neg_texts = df_all[df_all['rating'] <= 2]['review'].tolist() if 'rating' in df_all.columns else review_texts
+            if neg_texts:
+                neg_kw = _extract_keywords(neg_texts, 5)
+                if neg_kw:
+                    for i, (word, cnt) in enumerate(neg_kw, 1):
+                        st.markdown(f"""
+                        <div style="display:flex;justify-content:space-between;align-items:center;
+                                    padding:0.4rem 0.7rem;background:#fff5f5;border-radius:8px;
+                                    margin-bottom:0.3rem;border:1px solid #fee2e2;">
+                            <span style="font-weight:600;color:#dc2626;font-size:0.85rem;">#{i} {word}</span>
+                            <span style="font-size:0.78rem;color:#9ca3af;">{cnt}회</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.info("키워드 데이터 부족")
+            else:
+                st.info("부정 리뷰 데이터 없음")
+
+        with voc_col2:
+            st.markdown("**주요 만족 키워드 Top 5**")
+            pos_texts = df_all[df_all['rating'] >= 4]['review'].tolist() if 'rating' in df_all.columns else review_texts
+            if pos_texts:
+                pos_kw = _extract_keywords(pos_texts, 5)
+                if pos_kw:
+                    for i, (word, cnt) in enumerate(pos_kw, 1):
+                        st.markdown(f"""
+                        <div style="display:flex;justify-content:space-between;align-items:center;
+                                    padding:0.4rem 0.7rem;background:#f0fdf4;border-radius:8px;
+                                    margin-bottom:0.3rem;border:1px solid #bbf7d0;">
+                            <span style="font-weight:600;color:#16a34a;font-size:0.85rem;">#{i} {word}</span>
+                            <span style="font-size:0.78rem;color:#9ca3af;">{cnt}회</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.info("키워드 데이터 부족")
+            else:
+                st.info("긍정 리뷰 데이터 없음")
+
+        with voc_col3:
+            st.markdown("**이슈 카테고리 분포**")
+            if review_texts:
+                cat_counts = _classify_issue_categories(review_texts)
+                if cat_counts:
+                    cat_series = pd.Series(cat_counts).sort_values(ascending=False)
+                    st.bar_chart(cat_series)
+                else:
+                    st.info("카테고리 분류 결과 없음")
+
+        st.markdown("---")
+
+        # ── 행 4: 비교 분석 ───────────────────────────────────────────────────
+        st.markdown("#### 🌍 비교 분석")
+
+        available_countries = [
+            c for c in selected_countries
+            if c in country_dataframes and len(country_dataframes[c]) > 0
+        ]
+
+        if len(available_countries) >= 2:
+            cmp_cols = st.columns(len(available_countries))
+            for idx, ck in enumerate(available_countries):
+                ci = country_options[ck]
+                dfc = country_dataframes[ck]
+                with cmp_cols[idx]:
+                    avg = dfc['rating'].mean() if 'rating' in dfc.columns else None
+                    neg = (dfc['rating'] <= 2).sum() / len(dfc) * 100 if 'rating' in dfc.columns else None
+                    st.markdown(f"""
+                    <div style="background:#fff;border:1px solid #e0e7ff;border-radius:12px;
+                                padding:1rem;text-align:center;">
+                        <div style="font-size:1.3rem;">{ci['emoji']}</div>
+                        <div style="font-weight:700;color:#1e1b4b;">{ci['name']}</div>
+                        <div style="font-size:0.82rem;color:#6b7280;margin-top:0.3rem;">
+                            리뷰 {len(dfc):,}개
+                        </div>
+                        <div style="font-size:1.1rem;font-weight:700;color:#6366f1;margin-top:0.3rem;">
+                            {'⭐ ' + f'{avg:.2f}' if avg else '-'}
+                        </div>
+                        <div style="font-size:0.78rem;color:#dc2626;">
+                            부정 {f'{neg:.1f}%' if neg is not None else '-'}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            # 국가별 평점 분포 비교
+            st.markdown("**국가별 평점 분포 비교**")
+            pivot_rating_dist = pd.DataFrame({
+                country_options[ck]['name']: country_dataframes[ck]['rating'].value_counts().sort_index()
+                for ck in available_countries if 'rating' in country_dataframes[ck].columns
+            }).fillna(0)
+            pivot_rating_dist.index = pivot_rating_dist.index.astype(str) + '점'
+            st.bar_chart(pivot_rating_dist)
+
+        elif len(available_countries) == 1:
+            st.info("국가를 2개 이상 선택하면 국가별 비교를 볼 수 있습니다.")
         else:
-            st.error("❌ 수집된 리뷰가 없습니다. 앱 ID를 확인하거나 나중에 다시 시도해주세요.")
+            st.info("국가 정보가 부족하여 국가별 비교는 제한됩니다.")
+
+        st.markdown("---")
+
+        # ── 리뷰 데이터 테이블 ─────────────────────────────────────────────────
+        st.markdown("#### 📋 리뷰 원본 데이터")
+
+        filter_col1, filter_col2 = st.columns(2)
+        df_filtered = df_all.copy()
+
+        with filter_col1:
+            if 'rating' in df_all.columns:
+                sel_ratings = st.multiselect(
+                    "평점 필터",
+                    options=sorted(df_all['rating'].unique()),
+                    default=sorted(df_all['rating'].unique()),
+                )
+                df_filtered = df_filtered[df_filtered['rating'].isin(sel_ratings)]
+
+        with filter_col2:
+            if 'country' in df_all.columns and df_all['country'].nunique() > 1:
+                sel_ctry = st.multiselect(
+                    "국가 필터",
+                    options=sorted(df_all['country'].unique()),
+                    default=sorted(df_all['country'].unique()),
+                )
+                df_filtered = df_filtered[df_filtered['country'].isin(sel_ctry)]
+
+        display_columns = ['country', 'rating', 'title', 'review', 'date']
+        available_columns = [c for c in display_columns if c in df_filtered.columns]
+        st.dataframe(df_filtered[available_columns], use_container_width=True, height=400)
+
+        st.markdown("---")
+
+        # ── 다운로드 ───────────────────────────────────────────────────────────
+        st.markdown("#### 💾 내보내기")
+
+        def _remove_tz(df):
+            df_copy = df.copy()
+            if 'date' in df_copy.columns:
+                try:
+                    df_copy['date'] = df_copy['date'].dt.tz_convert(None)
+                except (TypeError, AttributeError):
+                    pass
+            return df_copy
+
+        dl_col1, dl_col2 = st.columns(2)
+
+        with dl_col1:
+            # LLM 최적화 CSV: 불필요한 컬럼 제거, 텍스트 정제
+            llm_cols = [c for c in ['date', 'country', 'rating', 'review', 'author'] if c in df_all.columns]
+            df_llm = _remove_tz(df_all[llm_cols].copy())
+            df_llm['review'] = df_llm['review'].astype(str).str.replace('\n', ' ').str.strip()
+            csv_llm = df_llm.to_csv(index=False, encoding='utf-8-sig')
+            st.download_button(
+                label="📄 CSV 다운로드 (LLM 분석용)",
+                data=csv_llm,
+                file_name=f"reviews_{st.session_state.app_id}_llm.csv",
+                mime="text/csv",
+                help="GPT/Gemini에 바로 업로드할 수 있도록 최적화된 CSV입니다.",
+                use_container_width=True,
+            )
+            st.caption("💡 다운로드 후 ChatGPT / Gemini에 업로드하여 심층 분석하세요.")
+
+        with dl_col2:
+            # Excel (국가별 시트)
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                for ck in selected_countries:
+                    if ck in country_dataframes and len(country_dataframes[ck]) > 0:
+                        _remove_tz(country_dataframes[ck]).to_excel(
+                            writer, sheet_name=f"{ck}_Reviews", index=False)
+                _remove_tz(df_all).to_excel(writer, sheet_name='All_Reviews', index=False)
+            st.download_button(
+                label="📊 Excel 다운로드 (국가별 시트)",
+                data=output.getvalue(),
+                file_name=f"reviews_{st.session_state.app_id}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True,
+            )
+
+        # AI 분석 링크
+        st.markdown("""
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-top:0.8rem;">
+            <a href="https://chat.openai.com" target="_blank" style="text-decoration:none;">
+                <div style="background:#fff;border:1px solid #e0e7ff;border-radius:12px;
+                            padding:1rem 1.2rem;display:flex;align-items:center;gap:0.8rem;">
+                    <div style="font-size:1.5rem;">🤖</div>
+                    <div>
+                        <div style="font-weight:600;color:#1e1b4b;font-size:0.9rem;">ChatGPT로 분석</div>
+                        <div style="font-size:0.75rem;color:#6b7280;">CSV 업로드 후 분석</div>
+                    </div>
+                </div>
+            </a>
+            <a href="https://gemini.google.com" target="_blank" style="text-decoration:none;">
+                <div style="background:#fff;border:1px solid #e0e7ff;border-radius:12px;
+                            padding:1rem 1.2rem;display:flex;align-items:center;gap:0.8rem;">
+                    <div style="font-size:1.5rem;">✨</div>
+                    <div>
+                        <div style="font-weight:600;color:#1e1b4b;font-size:0.9rem;">Gemini로 분석</div>
+                        <div style="font-size:0.75rem;color:#6b7280;">CSV 업로드 후 분석</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        """, unsafe_allow_html=True)
+
+    else:
+        st.error("❌ 수집된 리뷰가 없습니다. 앱 ID를 확인하거나 나중에 다시 시도해주세요.")
 elif st.session_state.reviews_data is None:
     # 초기 화면
     st.markdown("""
