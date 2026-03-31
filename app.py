@@ -303,19 +303,7 @@ canvas {
 </style>
 """, unsafe_allow_html=True)
 
-# ── [DEBUG] 현재 상태 출력 ────────────────────────────────────────────
-
-# ── OAuth 콜백을 가장 먼저 처리 (CookieManager 이전) ──────────────────
-if 'code' in st.query_params and not st.session_state.get('authenticated'):
-    handle_oauth_callback()
-    # handle_oauth_callback 내부에서 st.rerun()이 호출되므로 아래로 내려오지 않음
-
-# ── 개발자 우회 접속 처리 ──────────────────────────────────────────────
-if 'dev' in st.query_params and not st.session_state.get('authenticated'):
-    from auth import check_authentication as _check
-    _check()  # dev 파라미터 처리 (check_authentication 내부에서 처리됨)
-
-# ── 쿠키에서 세션 복원 (새로고침 시) ─────────────────────────────────────
+# ── 1순위: 쿠키에서 세션 복원 (새로고침 시 code 재사용 방지) ───────────
 if not st.session_state.get('authenticated'):
     _user_cookie = _get_cookie("user_info")
     if _user_cookie:
@@ -324,8 +312,21 @@ if not st.session_state.get('authenticated'):
             if _stored.get('email'):
                 st.session_state.authenticated = True
                 st.session_state.user_info = _stored
+                st.session_state.user_cookie_saved = True
+                # 이미 로그인됐으므로 URL의 code 파라미터 제거
+                if 'code' in st.query_params:
+                    st.query_params.clear()
         except Exception:
             pass
+
+# ── 2순위: OAuth 콜백 처리 (쿠키 복원 실패 시에만) ───────────────────
+if 'code' in st.query_params and not st.session_state.get('authenticated'):
+    handle_oauth_callback()
+
+# ── 개발자 우회 접속 처리 ──────────────────────────────────────────────
+if 'dev' in st.query_params and not st.session_state.get('authenticated'):
+    from auth import check_authentication as _check
+    _check()
 
 # ── 로그인 성공 직후 쿠키 저장 (최초 1회) ─────────────────────────────────
 if st.session_state.get('authenticated') and st.session_state.get('user_info'):
