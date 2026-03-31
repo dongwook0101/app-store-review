@@ -12,8 +12,30 @@ from datetime import datetime
 import os
 import io
 import re
-import extra_streamlit_components as stx
+import streamlit.components.v1 as _stc
 from auth import check_authentication, handle_oauth_callback, show_login_page
+
+# ── 쿠키 헬퍼 (st.context.cookies 읽기 + JS 쓰기) ─────────────────────────
+def _get_cookie(name: str) -> str | None:
+    try:
+        return st.context.cookies.get(name)
+    except Exception:
+        return None
+
+def _set_cookie(name: str, value: str, days: int = 365) -> None:
+    from datetime import timedelta
+    expires = (datetime.now() + timedelta(days=days)).strftime("%a, %d %b %Y %H:%M:%S GMT")
+    safe = value.replace('"', '\\"').replace('\n', '').replace('\r', '')
+    _stc.html(
+        f'<script>document.cookie="{name}={safe}; expires={expires}; path=/; SameSite=Lax";</script>',
+        height=0,
+    )
+
+def _delete_cookie(name: str) -> None:
+    _stc.html(
+        f'<script>document.cookie="{name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";</script>',
+        height=0,
+    )
 
 # 페이지 설정
 st.set_page_config(
@@ -293,38 +315,23 @@ if 'dev' in st.query_params and not st.session_state.get('authenticated'):
     from auth import check_authentication as _check
     _check()  # dev 파라미터 처리 (check_authentication 내부에서 처리됨)
 
-# ── CookieManager 초기화 ───────────────────────────────────────────────
-def get_manager():
-    return stx.CookieManager()
-
-if 'cookie_manager' not in st.session_state:
-    st.session_state.cookie_manager = get_manager()
-
-cookie_manager = st.session_state.cookie_manager
-
-# 쿠키에서 세션 복원 (이미 인증 안 된 경우만)
+# ── 쿠키에서 세션 복원 (새로고침 시) ─────────────────────────────────────
 if not st.session_state.get('authenticated'):
-    import json as _json
-    _user_cookie = cookie_manager.get(cookie="user_info")
+    _user_cookie = _get_cookie("user_info")
     if _user_cookie:
         try:
-            _stored = _json.loads(_user_cookie)
+            _stored = json.loads(_user_cookie)
             if _stored.get('email'):
                 st.session_state.authenticated = True
                 st.session_state.user_info = _stored
         except Exception:
             pass
 
-# 로그인 성공 직후 user_info를 쿠키에 저장 (최초 1회)
+# ── 로그인 성공 직후 쿠키 저장 (최초 1회) ─────────────────────────────────
 if st.session_state.get('authenticated') and st.session_state.get('user_info'):
     if not st.session_state.get('user_cookie_saved'):
-        import json as _json
         try:
-            cookie_manager.set(
-                "user_info",
-                _json.dumps(st.session_state.user_info, ensure_ascii=False),
-                expires_at=datetime.now().replace(year=datetime.now().year + 1)
-            )
+            _set_cookie("user_info", json.dumps(st.session_state.user_info, ensure_ascii=False))
         except Exception:
             pass
         st.session_state.user_cookie_saved = True
@@ -649,8 +656,8 @@ with st.sidebar:
             st.session_state.credentials = None
             st.session_state.user_cookie_saved = False
             try:
-                cookie_manager.delete("auth_token")
-                cookie_manager.delete("user_info")
+                _delete_cookie("auth_token")
+                _delete_cookie("user_info")
             except Exception:
                 pass
             st.rerun()
@@ -1163,17 +1170,29 @@ if st.session_state.reviews_data is not None:
                     </div>
                     """, unsafe_allow_html=True)
 
-            # 국가별 평점 분포 비교
+            # 국가별 평점 분포 비교 (grouped bar)
             st.markdown("**국가별 평점 분포 비교**")
-            pivot_rating_dist = pd.DataFrame({
-                country_options[ck]['name']: country_dataframes[ck]['rating'].value_counts().sort_index()
-                for ck in available_countries if 'rating' in country_dataframes[ck].columns
-            }).fillna(0)
-            # x축: 1점~5점, 각 점수마다 국가별 bar
-            pivot_rating_dist.index = pivot_rating_dist.index.astype(int)
-            pivot_rating_dist = pivot_rating_dist.reindex([1, 2, 3, 4, 5], fill_value=0)
-            pivot_rating_dist.index = pivot_rating_dist.index.astype(str) + '점'
-            st.bar_chart(pivot_rating_dist)
+            import altair as alt
+            rows = []
+            for ck in available_countries:
+                if 'rating' not in country_dataframes[ck].columns:
+                    continue
+                counts = country_dataframes[ck]['rating'].value_counts()
+                for rating in [1, 2, 3, 4, 5]:
+                    rows.append({
+                        '평점': f'{rating}점',
+                        '국가': country_options[ck]['name'],
+                        '리뷰 수': int(counts.get(rating, 0)),
+                    })
+            dist_df = pd.DataFrame(rows)
+            grouped_chart = alt.Chart(dist_df).mark_bar().encode(
+                x=alt.X('평점:N', sort=['1점','2점','3점','4점','5점'], axis=alt.Axis(labelAngle=0)),
+                y=alt.Y('리뷰 수:Q'),
+                color=alt.Color('국가:N'),
+                xOffset=alt.XOffset('국가:N'),
+                tooltip=['평점', '국가', '리뷰 수'],
+            ).properties(height=300)
+            st.altair_chart(grouped_chart, use_container_width=True)
 
         elif len(available_countries) == 1:
             st.info("국가를 2개 이상 선택하면 국가별 비교를 볼 수 있습니다.")
