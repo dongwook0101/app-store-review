@@ -61,6 +61,15 @@ st.markdown("""
 section.main, section.main > div {
     background-color: #E5E5FF;
 }
+/* 상단 툴바/헤더 배경 */
+[data-testid="stHeader"],
+header[data-testid="stHeader"] {
+    background-color: #E5E5FF !important;
+}
+[data-testid="stToolbar"],
+[data-testid="stDecoration"] {
+    background-color: #E5E5FF !important;
+}
 
 /* ── 사이드바 ── */
 section[data-testid="stSidebar"] {
