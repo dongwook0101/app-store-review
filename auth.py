@@ -265,6 +265,11 @@ def handle_oauth_callback():
         st.session_state.oauth_error = str(e)
 
     if success:
+        # URL에서 code/state 제거 후 rerun (새로고침 시 invalid_grant 방지)
+        try:
+            st.query_params.clear()
+        except Exception:
+            pass
         st.rerun()
 
 def show_login_page():
