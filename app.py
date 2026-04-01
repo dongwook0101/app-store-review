@@ -1326,7 +1326,6 @@ elif st.session_state.reviews_data is None:
     ">
         <div style="font-size:1rem; font-weight:600; color:#4338ca; margin-bottom:1rem;">🚀 시작하는 방법</div>
 
-        <!-- App Store -->
         <div style="font-size:0.78rem; font-weight:700; color:#6366f1; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.6rem;">🍎 App Store</div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; margin-bottom:1.2rem;">
             <div style="display:flex; gap:0.8rem; align-items:flex-start;">
@@ -1345,7 +1344,6 @@ elif st.session_state.reviews_data is None:
             </div>
         </div>
 
-        <!-- Play Store -->
         <div style="font-size:0.78rem; font-weight:700; color:#16a34a; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.6rem;">🤖 Play Store</div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; margin-bottom:1.2rem;">
             <div style="display:flex; gap:0.8rem; align-items:flex-start;">
@@ -1364,7 +1362,6 @@ elif st.session_state.reviews_data is None:
             </div>
         </div>
 
-        <!-- 공통 -->
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem;">
             <div style="display:flex; gap:0.8rem; align-items:flex-start;">
                 <div style="background:#eef2ff; color:#6366f1; border-radius:8px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;">3</div>
