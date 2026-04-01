@@ -1349,32 +1349,38 @@ elif st.session_state.reviews_data is None:
 </style>
 """, unsafe_allow_html=True)
 
-        st.markdown('<div class="step-section-label">🍎 App Store</div>', unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown("""<div class="step-box">
+        col_apple, col_play = st.columns(2)
+
+        # ── App Store 컬럼 ──
+        with col_apple:
+            st.markdown('<div class="step-section-label">🍎 App Store</div>', unsafe_allow_html=True)
+            st.markdown("""<div class="step-box" style="margin-bottom:0.6rem;">
   <div class="step-title">1. App Store 선택 후 앱 ID 입력</div>
   <div class="step-desc">앱스토어 URL에서 숫자 ID를 복사하세요<br>apps.apple.com/app/id<b>1510564828</b></div>
 </div>""", unsafe_allow_html=True)
-        with c2:
             st.markdown("""<div class="step-box">
   <div class="step-title">2. 국가 및 최대 페이지 수 선택</div>
   <div class="step-desc">최대 2개 국가 비교, 페이지당 최대 50개 리뷰 수집</div>
 </div>""", unsafe_allow_html=True)
 
-        st.markdown('<div class="step-section-label">🤖 Play Store</div>', unsafe_allow_html=True)
-        c3, c4 = st.columns(2)
-        with c3:
-            st.markdown("""<div class="step-box">
+        # ── Play Store 컬럼 ──
+        with col_play:
+            st.markdown('<div class="step-section-label">🤖 Play Store</div>', unsafe_allow_html=True)
+            st.markdown("""<div class="step-box" style="margin-bottom:0.6rem;">
   <div class="step-title">1. Play Store 선택 후 패키지명 입력</div>
   <div class="step-desc">플레이스토어 URL의 id= 뒤 값을 복사하세요<br>play.google.com/store/apps/details?id=<b>com.kakao.talk</b></div>
 </div>""", unsafe_allow_html=True)
-        with c4:
             st.markdown("""<div class="step-box">
   <div class="step-title">2. 국가 및 최대 리뷰 수 선택</div>
   <div class="step-desc">최대 2개 국가, 최대 5,000개 리뷰 수집 (많을수록 시간 증가)</div>
 </div>""", unsafe_allow_html=True)
 
+        # ── 아래 방향 화살표 ──
+        st.markdown("""
+<div style="text-align:center; font-size:2rem; color:#6366f1; margin:1rem 0 0.5rem 0;">↓</div>
+""", unsafe_allow_html=True)
+
+        # ── 공통 단계 ──
         st.markdown('<div class="step-section-label">📊 공통</div>', unsafe_allow_html=True)
         c5, c6 = st.columns(2)
         with c5:
