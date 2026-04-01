@@ -1377,11 +1377,9 @@ elif st.session_state.reviews_data is None:
 
         # ── 아래 방향 화살표 ──
         st.markdown("""
-<div style="text-align:center; font-size:2rem; color:#6366f1; margin:1rem 0 0.5rem 0;">↓</div>
+<div style="text-align:center; font-size:2rem; color:#6366f1; margin:0.5rem 0 0 0;">↓</div>
+<div class="step-section-label" style="margin-top:0.2rem;">📊 공통</div>
 """, unsafe_allow_html=True)
-
-        # ── 공통 단계 ──
-        st.markdown('<div class="step-section-label">📊 공통</div>', unsafe_allow_html=True)
         c5, c6 = st.columns(2)
         with c5:
             st.markdown("""<div class="step-box">
