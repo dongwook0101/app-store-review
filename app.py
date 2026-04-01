@@ -1325,33 +1325,59 @@ elif st.session_state.reviews_data is None:
         margin-bottom:1.2rem;
     ">
         <div style="font-size:1rem; font-weight:600; color:#4338ca; margin-bottom:1rem;">🚀 시작하는 방법</div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+
+        <!-- App Store -->
+        <div style="font-size:0.78rem; font-weight:700; color:#6366f1; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.6rem;">🍎 App Store</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; margin-bottom:1.2rem;">
             <div style="display:flex; gap:0.8rem; align-items:flex-start;">
                 <div style="background:#eef2ff; color:#6366f1; border-radius:8px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;">1</div>
                 <div>
-                    <div style="font-weight:600; color:#1e1b4b; margin-bottom:0.2rem;">앱 ID 입력</div>
-                    <div style="font-size:0.82rem; color:#1e1b4b;">앱스토어 URL에서 ID를 복사하세요<br><span style="color:#6366f1;">apps.apple.com/app/id<b>1510564828</b></span></div>
+                    <div style="font-weight:600; color:#1e1b4b; margin-bottom:0.2rem;">App Store 선택 후 앱 ID 입력</div>
+                    <div style="font-size:0.82rem; color:#6b7280;">앱스토어 URL에서 숫자 ID를 복사하세요<br><span style="color:#6366f1;">apps.apple.com/app/id<b>1510564828</b></span></div>
                 </div>
             </div>
             <div style="display:flex; gap:0.8rem; align-items:flex-start;">
                 <div style="background:#eef2ff; color:#6366f1; border-radius:8px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;">2</div>
                 <div>
-                    <div style="font-weight:600; color:#1e1b4b; margin-bottom:0.2rem;">국가 및 기간 선택</div>
-                    <div style="font-size:0.82rem; color:#1e1b4b;">최대 2개 국가 비교 분석, 페이지당 최대 50개 리뷰 수집</div>
+                    <div style="font-weight:600; color:#1e1b4b; margin-bottom:0.2rem;">국가 및 최대 페이지 수 선택</div>
+                    <div style="font-size:0.82rem; color:#6b7280;">최대 2개 국가 비교, 페이지당 최대 50개 리뷰 수집</div>
                 </div>
             </div>
+        </div>
+
+        <!-- Play Store -->
+        <div style="font-size:0.78rem; font-weight:700; color:#16a34a; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.6rem;">🤖 Play Store</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; margin-bottom:1.2rem;">
+            <div style="display:flex; gap:0.8rem; align-items:flex-start;">
+                <div style="background:#f0fdf4; color:#16a34a; border-radius:8px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;">1</div>
+                <div>
+                    <div style="font-weight:600; color:#1e1b4b; margin-bottom:0.2rem;">Play Store 선택 후 패키지명 입력</div>
+                    <div style="font-size:0.82rem; color:#6b7280;">플레이스토어 URL의 <b>id=</b> 뒤 값을 복사하세요<br><span style="color:#16a34a;">play.google.com/store/apps/details?id=<b>com.kakao.talk</b></span></div>
+                </div>
+            </div>
+            <div style="display:flex; gap:0.8rem; align-items:flex-start;">
+                <div style="background:#f0fdf4; color:#16a34a; border-radius:8px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;">2</div>
+                <div>
+                    <div style="font-weight:600; color:#1e1b4b; margin-bottom:0.2rem;">국가 및 최대 리뷰 수 선택</div>
+                    <div style="font-size:0.82rem; color:#6b7280;">최대 2개 국가, 최대 5,000개 리뷰 수집 (많을수록 시간 증가)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 공통 -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem;">
             <div style="display:flex; gap:0.8rem; align-items:flex-start;">
                 <div style="background:#eef2ff; color:#6366f1; border-radius:8px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;">3</div>
                 <div>
                     <div style="font-weight:600; color:#1e1b4b; margin-bottom:0.2rem;">분석 시작</div>
-                    <div style="font-size:0.82rem; color:#1e1b4b;">왼쪽 사이드바 하단의 <b>분석 시작</b> 버튼을 클릭하세요</div>
+                    <div style="font-size:0.82rem; color:#6b7280;">왼쪽 사이드바 하단의 <b>분석 시작</b> 버튼을 클릭하세요</div>
                 </div>
             </div>
             <div style="display:flex; gap:0.8rem; align-items:flex-start;">
                 <div style="background:#eef2ff; color:#6366f1; border-radius:8px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;">4</div>
                 <div>
                     <div style="font-weight:600; color:#1e1b4b; margin-bottom:0.2rem;">결과 다운로드</div>
-                    <div style="font-size:0.82rem; color:#1e1b4b;">Excel · CSV · JSON 형식으로 내보내거나 AI로 분석하세요</div>
+                    <div style="font-size:0.82rem; color:#6b7280;">CSV(LLM 분석용) · Excel 형식으로 내보내거나 AI로 분석하세요</div>
                 </div>
             </div>
         </div>
