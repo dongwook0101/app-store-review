@@ -1320,33 +1320,74 @@ elif st.session_state.reviews_data is None:
     # 초기 화면
     with st.container():
         st.markdown("**🚀 시작하는 방법**")
+        st.markdown("""
+<style>
+.step-box {
+    background: #ffffff;
+    border: 1px solid #c7d2fe;
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    height: 100%;
+}
+.step-box .step-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #1e1b4b;
+    margin-bottom: 0.4rem;
+}
+.step-box .step-desc {
+    font-size: 0.82rem;
+    color: #4b5563;
+    line-height: 1.5;
+}
+.step-section-label {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #1e1b4b;
+    margin: 0.8rem 0 0.5rem 0;
+}
+</style>
+""", unsafe_allow_html=True)
 
-        st.markdown("🍎 **App Store**")
+        st.markdown('<div class="step-section-label">🍎 App Store</div>', unsafe_allow_html=True)
         c1, c2 = st.columns(2)
         with c1:
-            st.markdown("**1. App Store 선택 후 앱 ID 입력**")
-            st.caption("앱스토어 URL에서 숫자 ID를 복사하세요\napps.apple.com/app/id**1510564828**")
+            st.markdown("""<div class="step-box">
+  <div class="step-title">1. App Store 선택 후 앱 ID 입력</div>
+  <div class="step-desc">앱스토어 URL에서 숫자 ID를 복사하세요<br>apps.apple.com/app/id<b>1510564828</b></div>
+</div>""", unsafe_allow_html=True)
         with c2:
-            st.markdown("**2. 국가 및 최대 페이지 수 선택**")
-            st.caption("최대 2개 국가 비교, 페이지당 최대 50개 리뷰 수집")
+            st.markdown("""<div class="step-box">
+  <div class="step-title">2. 국가 및 최대 페이지 수 선택</div>
+  <div class="step-desc">최대 2개 국가 비교, 페이지당 최대 50개 리뷰 수집</div>
+</div>""", unsafe_allow_html=True)
 
-        st.markdown("🤖 **Play Store**")
+        st.markdown('<div class="step-section-label">🤖 Play Store</div>', unsafe_allow_html=True)
         c3, c4 = st.columns(2)
         with c3:
-            st.markdown("**1. Play Store 선택 후 패키지명 입력**")
-            st.caption("플레이스토어 URL의 id= 뒤 값을 복사하세요\nplay.google.com/store/apps/details?id=**com.kakao.talk**")
+            st.markdown("""<div class="step-box">
+  <div class="step-title">1. Play Store 선택 후 패키지명 입력</div>
+  <div class="step-desc">플레이스토어 URL의 id= 뒤 값을 복사하세요<br>play.google.com/store/apps/details?id=<b>com.kakao.talk</b></div>
+</div>""", unsafe_allow_html=True)
         with c4:
-            st.markdown("**2. 국가 및 최대 리뷰 수 선택**")
-            st.caption("최대 2개 국가, 최대 5,000개 리뷰 수집 (많을수록 시간 증가)")
+            st.markdown("""<div class="step-box">
+  <div class="step-title">2. 국가 및 최대 리뷰 수 선택</div>
+  <div class="step-desc">최대 2개 국가, 최대 5,000개 리뷰 수집 (많을수록 시간 증가)</div>
+</div>""", unsafe_allow_html=True)
 
-        st.markdown("---")
+        st.markdown('<div class="step-section-label">📊 공통</div>', unsafe_allow_html=True)
         c5, c6 = st.columns(2)
         with c5:
-            st.markdown("**3. 분석 시작**")
-            st.caption("왼쪽 사이드바 하단의 **분석 시작** 버튼을 클릭하세요")
+            st.markdown("""<div class="step-box">
+  <div class="step-title">3. 분석 시작</div>
+  <div class="step-desc">왼쪽 사이드바 하단의 <b>분석 시작</b> 버튼을 클릭하세요</div>
+</div>""", unsafe_allow_html=True)
         with c6:
-            st.markdown("**4. 결과 다운로드**")
-            st.caption("CSV(LLM 분석용) · Excel 형식으로 내보내거나 AI로 분석하세요")
+            st.markdown("""<div class="step-box">
+  <div class="step-title">4. 결과 다운로드</div>
+  <div class="step-desc">CSV(LLM 분석용) · Excel 형식으로 내보내거나 AI로 분석하세요</div>
+</div>""", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
 
 st.markdown("""
 <div style="
